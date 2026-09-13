@@ -5,6 +5,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- The tests are short and run to completion; threading TestContext cancellation through every call adds noise only. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
