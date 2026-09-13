@@ -1,0 +1,61 @@
+@* Ledger entries as a list: what happened, when and by whom, with the signed change on the right. *@
+@if (Items.Count == 0)
+{
+    <FlareEmptyState Compact Title="Пока пусто" Description="@EmptyText">
+        <IconContent><FlareIconView Value="@MaterialDesign3Icons.Regular.ReceiptLong" Size="2.5rem" /></IconContent>
+    </FlareEmptyState>
+}
+else
+{
+    <FlareList TItem="object">
+        @foreach (var item in Items)
+        {
+            <FlareListItem @key="item.Id" Primary="@item.Title" Secondary="@Describe(item)">
+                <Leading>
+                    <FlareAvatar Color="@(item.Amount > 0 ? FlareColor.Success : FlareColor.Error)" Size="AvatarSize.Sm">
+                        <FallbackContent><FlareIconView Value="@Icon(item.Kind)" /></FallbackContent>
+                    </FlareAvatar>
+                </Leading>
+                <Trailing>
+                    <FlareStack Align="FlareAlignItems.End" Gap="FlareSpacing.None">
+                        <FlareText Typo="TypographyScale.TitleMedium" Weight="FontWeight.Bold"
+                                   Color="@(item.Amount > 0 ? FlareColor.Success : FlareColor.Error)">@Format.Signed(item.Amount)</FlareText>
+                        <FlareText Typo="TypographyScale.LabelSmall">= @item.BalanceAfter</FlareText>
+                    </FlareStack>
+                </Trailing>
+            </FlareListItem>
+        }
+    </FlareList>
+}
+
+@code {
+    /// <summary>Entries to show, newest first.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<TransactionDto> Items { get; set; } = [];
+
+    /// <summary>Adds the child's name to each line, for a parent looking at several children.</summary>
+    [Parameter] public bool ShowChild { get; set; }
+
+    /// <summary>Text of the empty state.</summary>
+    [Parameter] public string EmptyText { get; set; } = "Здесь появятся начисления и покупки.";
+
+    private string Describe(TransactionDto t)
+    {
+        var parts = new List<string>();
+        if (ShowChild) parts.Add(t.ChildName);
+        parts.Add(Format.Kind(t.Kind));
+        parts.Add(Format.When(t.CreatedAt));
+        if (t.AuthorName is not null && t.AuthorName != t.ChildName) parts.Add(t.AuthorName);
+        var line = string.Join(" - ", parts);
+        return t.Comment is null ? line : $"{line} - \"{t.Comment}\"";
+    }
+
+    private static FlareIcon Icon(TransactionKind kind) => kind switch
+    {
+        TransactionKind.Task => MaterialDesign3Icons.Regular.TaskAlt,
+        TransactionKind.Penalty => MaterialDesign3Icons.Regular.Gavel,
+        TransactionKind.Bonus => MaterialDesign3Icons.Regular.Celebration,
+        TransactionKind.Deduction => MaterialDesign3Icons.Regular.DoNotDisturbOn,
+        TransactionKind.Purchase => MaterialDesign3Icons.Regular.ShoppingCart,
+        _ => MaterialDesign3Icons.Regular.Undo,
+    };
+}

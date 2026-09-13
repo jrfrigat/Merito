@@ -1,0 +1,19 @@
+@inject Session Session
+
+<FlareNavMenu AriaLabel="Разделы">
+    <ChildContent>
+        @foreach (var item in AppNavigation.For(Session.Family!.Role))
+        {
+            <FlareNavLink Href="@item.Href" Match="@(item.Href == "" ? NavMatchMode.Exact : NavMatchMode.Prefix)">
+                <IconContent><FlareIconView Value="@item.Icon" Size="1.4rem" /></IconContent>
+                <ChildContent>@item.Label</ChildContent>
+            </FlareNavLink>
+        }
+    </ChildContent>
+    <FooterContent>
+        <FlareNavLink Href="family">
+            <IconContent><FlareIconView Value="@MaterialDesign3Icons.Regular.FamilyRestroom" Size="1.4rem" /></IconContent>
+            <ChildContent>Семья</ChildContent>
+        </FlareNavLink>
+    </FooterContent>
+</FlareNavMenu>

@@ -1,0 +1,170 @@
+@page "/family"
+@inject ApiClient Api
+@inject Session Session
+@inject IDialogService Dialogs
+@inject ISnackbarService Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Семья - Merito</PageTitle>
+
+<FlareStack Gap="FlareSpacing.Large">
+    <PageHeader Title="@(_family?.Name ?? "Семья")" Subtitle="@(Session.IsParent ? "Участники, аккаунты детей и приглашения" : null)">
+        <Actions>
+            @if (Session.IsParent)
+            {
+                <FlareButton Variant="ButtonVariant.Text" OnClick="RenameAsync">Переименовать</FlareButton>
+            }
+        </Actions>
+    </PageHeader>
+
+    <LoadState Loading="_family is null" Error="@_error" OnRetry="LoadAsync">
+        @if (_family is not null)
+        {
+            @if (Session.IsParent)
+            {
+                <FlareStack Row Wrap Gap="FlareSpacing.Small">
+                    <FlareButton OnClick="AddChildAsync">
+                        <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.PersonAdd" /></LeadingIcon>
+                        <ChildContent>Добавить ребенка</ChildContent>
+                    </FlareButton>
+                    <FlareButton Variant="ButtonVariant.Tonal" OnClick="InviteAsync">
+                        <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Key" /></LeadingIcon>
+                        <ChildContent>Код приглашения</ChildContent>
+                    </FlareButton>
+                </FlareStack>
+            }
+
+            <FlareCard Variant="CardVariant.Outlined">
+                <FlareList TItem="object">
+                    @foreach (var member in _family.Members)
+                    {
+                        <FlareListItem @key="member.Id" Primary="@(member.Id == Session.Family!.MemberId ? $"{member.DisplayName} (вы)" : member.DisplayName)"
+                                       Secondary="@Describe(member)">
+                            <Leading><FlareAvatar Text="@member.DisplayName" /></Leading>
+                            <Trailing>
+                                @if (Session.IsParent && member.Id != Session.Family!.MemberId)
+                                {
+                                    <FlareStack Row Gap="FlareSpacing.None">
+                                        @if (member.Login is not null)
+                                        {
+                                            <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Key" AriaLabel="Сменить пароль" OnClick="@(() => ResetPasswordAsync(member))" />
+                                        }
+                                        <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Delete" AriaLabel="Убрать из семьи" OnClick="@(() => RemoveAsync(member))" />
+                                    </FlareStack>
+                                }
+                            </Trailing>
+                        </FlareListItem>
+                    }
+                </FlareList>
+            </FlareCard>
+        }
+    </LoadState>
+
+    <FlareCard Variant="CardVariant.Filled">
+        <FlareCardHeader Title="@Session.Me?.DisplayName" Subtitle="@($"Вход: {Session.Me?.Login}")">
+            <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.AccountCircle" Size="2rem" /></AvatarContent>
+        </FlareCardHeader>
+        <FlareCardContent>
+            @if (Session.Me is { Families.Count: > 1 } me)
+            {
+                <FlareSelect TValue="MembershipDto" Label="Семья на экране" Items="me.Families" Value="Session.Family"
+                             ItemLabel="@(f => f is null ? "" : $"{f.FamilyName} - {Format.Role(f.Role)}")"
+                             ValueChanged="@(f => f is null ? Task.CompletedTask : Session.SelectFamilyAsync(f.FamilyId))" />
+            }
+        </FlareCardContent>
+        <FlareCardActions Wrap>
+            @if (Session.IsParent)
+            {
+                <FlareButton Variant="ButtonVariant.Text" Href="start">Создать или найти другую семью</FlareButton>
+            }
+            <FlareButton Variant="ButtonVariant.Outlined" OnClick="SignOutAsync">
+                <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Logout" /></LeadingIcon>
+                <ChildContent>Выйти</ChildContent>
+            </FlareButton>
+        </FlareCardActions>
+    </FlareCard>
+</FlareStack>
+
+@code {
+    private FamilyDto? _family;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _family = await Api.GetFamilyAsync(Session.FamilyId);
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private static string Describe(MemberDto member)
+    {
+        var parts = new List<string> { Format.Role(member.Role) };
+        if (member.Login is not null) parts.Add($"логин {member.Login}");
+        if (member.Balance is { } balance) parts.Add(Format.Points(balance));
+        return string.Join(" - ", parts);
+    }
+
+    private async Task AddChildAsync()
+    {
+        var result = await Dialogs.ShowAsync<ChildAccountDialog>("Аккаунт ребенка", null, new DialogOptions { Size = DialogSize.Sm });
+        if (result.Cancelled) return;
+        Snackbar.Show("Ребенок добавлен. Передайте ему логин и пароль.", SnackbarSeverity.Success);
+        await LoadAsync();
+    }
+
+    private async Task ResetPasswordAsync(MemberDto child)
+    {
+        var result = await Dialogs.ShowAsync<ChildAccountDialog>("Новый пароль",
+            new DialogParameters().Add(nameof(ChildAccountDialog.Child), child), new DialogOptions { Size = DialogSize.Sm });
+        if (!result.Cancelled) Snackbar.Show("Пароль изменен", SnackbarSeverity.Success);
+    }
+
+    private Task InviteAsync() => Dialogs.ShowAsync<InviteDialog>("Код приглашения", null, new DialogOptions { Size = DialogSize.Sm });
+
+    private async Task RemoveAsync(MemberDto member)
+    {
+        if (await Dialogs.ConfirmAsync("Убрать из семьи?", $"{member.DisplayName} больше не увидит семью. История баллов сохранится.", "Убрать", "Отмена") != true)
+            return;
+        try
+        {
+            await Api.RemoveMemberAsync(Session.FamilyId, member.Id);
+            await LoadAsync();
+        }
+        catch (ApiException e)
+        {
+            Snackbar.Show(e.Message, SnackbarSeverity.Error);
+        }
+    }
+
+    private async Task RenameAsync()
+    {
+        var name = await MessageBox.PromptAsync("Название семьи", "Название", _family?.Name ?? "");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        try
+        {
+            await Api.RenameFamilyAsync(Session.FamilyId, new RenameFamilyRequest(name));
+            await Session.ReloadAsync();
+            await LoadAsync();
+        }
+        catch (ApiException e)
+        {
+            Snackbar.Show(e.Message, SnackbarSeverity.Error);
+        }
+    }
+
+    private async Task SignOutAsync()
+    {
+        await Session.SignOutAsync();
+        Nav.NavigateTo("login");
+    }
+
+    [Inject] private IMessageBoxService MessageBox { get; set; } = default!;
+}

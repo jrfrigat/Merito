@@ -1,0 +1,65 @@
+@page "/login"
+@layout AuthLayout
+@inject ApiClient Api
+@inject Session Session
+@inject NavigationManager Nav
+
+<PageTitle>Вход - Merito</PageTitle>
+
+<FlareCard Variant="CardVariant.Outlined">
+    <FlareCardContent>
+        <form @onsubmit="SignInAsync" @onsubmit:preventDefault>
+            <FlareStack Gap="FlareSpacing.Medium">
+                <FlareText Typo="TypographyScale.TitleLarge" Element="h1">Вход</FlareText>
+                @if (_error is not null)
+                {
+                    <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@_error</FlareAlert>
+                }
+                <FlareTextField @bind-Value="_login" Immediate Label="Почта или логин" Autocomplete="username" Required
+                                HelperText="Ребенок входит по логину, который задал родитель" />
+                <FlarePasswordField @bind-Value="_password" Immediate Label="Пароль" Autocomplete="current-password" Required />
+                <FlareButton Type="ButtonType.Submit" FullWidth Loading="_busy" Size="ButtonSize.Lg">Войти</FlareButton>
+                <FlareDivider Text="или" />
+                <FlareButton Variant="ButtonVariant.Text" FullWidth Href="register">Зарегистрироваться как родитель</FlareButton>
+            </FlareStack>
+        </form>
+    </FlareCardContent>
+</FlareCard>
+
+@code {
+    private string? _login;
+    private string? _password;
+    private string? _error;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.EnsureLoadedAsync();
+        if (Session.IsSignedIn) Nav.NavigateTo("");
+    }
+
+    private async Task SignInAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_login) || string.IsNullOrEmpty(_password))
+        {
+            _error = "Введите логин и пароль.";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Session.SignInAsync(await Api.LoginAsync(new LoginRequest(_login.Trim(), _password)));
+            Nav.NavigateTo(Session.Family is null ? "start" : "");
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

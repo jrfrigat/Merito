@@ -1,0 +1,37 @@
+@* Shows a spinner while loading, an error with a retry while failed, and the content once loaded. *@
+@if (Error is not null)
+{
+    <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined" Title="Не получилось загрузить">
+        <FlareStack Gap="FlareSpacing.Small">
+            <FlareText>@Error</FlareText>
+            @if (OnRetry.HasDelegate)
+            {
+                <FlareButton Variant="ButtonVariant.Outlined" Size="ButtonSize.Sm" OnClick="OnRetry">Повторить</FlareButton>
+            }
+        </FlareStack>
+    </FlareAlert>
+}
+else if (Loading)
+{
+    <FlareStack Align="FlareAlignItems.Center" Style="padding-block:3rem;">
+        <FlareProgressCircular />
+    </FlareStack>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>True while the data is on its way.</summary>
+    [Parameter] public bool Loading { get; set; }
+
+    /// <summary>Message of the last failure, or null.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    /// <summary>Called by the retry button.</summary>
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    /// <summary>The loaded content.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

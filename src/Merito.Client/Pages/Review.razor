@@ -1,0 +1,116 @@
+@page "/review"
+@inject ApiClient Api
+@inject Session Session
+@inject IDialogService Dialogs
+@inject ISnackbarService Snackbar
+
+<PageTitle>Проверка - Merito</PageTitle>
+
+<RoleGate Role="FamilyRole.Parent">
+    <FlareStack Gap="FlareSpacing.Large">
+        <PageHeader Title="Проверка" Subtitle="Подтвердите, что дело сделано, и назначьте баллы" />
+
+        <LoadState Loading="_items is null" Error="@_error" OnRetry="LoadAsync">
+            @if (_items is not null)
+            {
+                var pending = _items.Where(s => s.Status == SubmissionStatus.Pending).ToList();
+                var reviewed = _items.Where(s => s.Status != SubmissionStatus.Pending).Take(20).ToList();
+
+                @if (pending.Count == 0)
+                {
+                    <FlareEmptyState Title="Все проверено" Description="Новые отметки детей появятся здесь.">
+                        <IconContent><FlareIconView Value="@MaterialDesign3Icons.Regular.DoneAll" Color="FlareColor.Success" Size="3rem" /></IconContent>
+                    </FlareEmptyState>
+                }
+                else
+                {
+                    <FlareStack Gap="FlareSpacing.Small">
+                        @foreach (var s in pending)
+                        {
+                            <FlareCard @key="s.Id" Variant="CardVariant.Elevated">
+                                <FlareCardHeader Title="@s.Title" Subtitle="@($"{s.ChildName} - {Format.When(s.SubmittedAt)}")">
+                                    <AvatarContent><FlareAvatar Text="@s.ChildName" /></AvatarContent>
+                                    <ActionContent>
+                                        <FlareChip Label="@(s.SuggestedPoints is { } p ? Format.Range(p, s.MaxPoints) : "свое дело")"
+                                                   Color="@(s.TaskId is null ? FlareColor.Tertiary : FlareColor.Primary)" Size="ChipSize.Sm" />
+                                    </ActionContent>
+                                </FlareCardHeader>
+                                @if (s.ChildComment is not null)
+                                {
+                                    <FlareCardContent><FlareText>"@s.ChildComment"</FlareText></FlareCardContent>
+                                }
+                                <FlareCardActions Align="CardActionsAlign.End">
+                                    <FlareButton Variant="ButtonVariant.Text" Color="FlareColor.Error" OnClick="@(() => ReviewAsync(s, approve: false))">Отклонить</FlareButton>
+                                    <FlareButton Color="FlareColor.Success" OnClick="@(() => ReviewAsync(s, approve: true))">
+                                        <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Check" /></LeadingIcon>
+                                        <ChildContent>Засчитать</ChildContent>
+                                    </FlareButton>
+                                </FlareCardActions>
+                            </FlareCard>
+                        }
+                    </FlareStack>
+                }
+
+                @if (reviewed.Count > 0)
+                {
+                    <FlareCard Variant="CardVariant.Outlined">
+                        <FlareCardHeader Title="Недавно проверено" />
+                        <FlareList TItem="object" Dense>
+                            @foreach (var s in reviewed)
+                            {
+                                <FlareListItem @key="s.Id" Primary="@s.Title"
+                                               Secondary="@($"{s.ChildName} - {s.ReviewerName} - {Format.When(s.ReviewedAt ?? s.SubmittedAt)}{(s.ReviewComment is null ? "" : $" - \"{s.ReviewComment}\"")}")">
+                                    <Leading>
+                                        <FlareIconView Value="@(s.Status == SubmissionStatus.Approved ? MaterialDesign3Icons.Regular.CheckCircle : MaterialDesign3Icons.Regular.Cancel)"
+                                                       Color="@(s.Status == SubmissionStatus.Approved ? FlareColor.Success : FlareColor.Error)" />
+                                    </Leading>
+                                    <Trailing>
+                                        @if (s.AwardedPoints is { } awarded)
+                                        {
+                                            <FlareText Weight="FontWeight.Bold" Color="FlareColor.Success">+@awarded</FlareText>
+                                        }
+                                    </Trailing>
+                                </FlareListItem>
+                            }
+                        </FlareList>
+                    </FlareCard>
+                }
+            }
+        </LoadState>
+    </FlareStack>
+</RoleGate>
+
+@code {
+    private List<SubmissionDto>? _items;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.IsParent) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _items = await Api.GetSubmissionsAsync(Session.FamilyId, take: 80);
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task ReviewAsync(SubmissionDto submission, bool approve)
+    {
+        var result = await Dialogs.ShowAsync<ReviewDialog>(approve ? "Засчитать" : "Отклонить", new DialogParameters()
+            .Add(nameof(ReviewDialog.Submission), submission)
+            .Add(nameof(ReviewDialog.Approve), approve), new DialogOptions { Size = DialogSize.Sm });
+        if (result.Cancelled) return;
+
+        Snackbar.Show(approve ? $"{submission.ChildName}: баллы начислены" : "Отметка отклонена",
+            approve ? SnackbarSeverity.Success : SnackbarSeverity.Normal);
+        await LoadAsync();
+    }
+}

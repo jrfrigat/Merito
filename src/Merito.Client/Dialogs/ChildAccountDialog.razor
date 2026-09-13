@@ -1,0 +1,40 @@
+@inherits DialogBase
+
+<FlareStack Gap="FlareSpacing.Medium">
+    @if (Error is not null)
+    {
+        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@Error</FlareAlert>
+    }
+    @if (Child is null)
+    {
+        <FlareText Typo="TypographyScale.BodyMedium">
+            Ребенок будет входить по логину и паролю, почта не нужна. Логин - латинские буквы и цифры.
+        </FlareText>
+        <FlareTextField @bind-Value="_name" Label="Имя" MaxLength="Limits.NameMaxLength" Required Autofocus />
+        <FlareTextField @bind-Value="_login" Label="Логин" MaxLength="Limits.LoginMaxLength" Required Autocomplete="off"
+                        Spellcheck="false" Placeholder="petya" />
+    }
+    else
+    {
+        <FlareText Typo="TypographyScale.BodyMedium">Новый пароль для @Child.DisplayName (логин @Child.Login).</FlareText>
+    }
+    <FlareTextField @bind-Value="_password" Label="Пароль" Required Autocomplete="new-password"
+                    HelperText="@($"Не короче {Limits.PasswordMinLength} символов. Запишите его для ребенка.")" />
+    <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+        <FlareButton Loading="Busy" OnClick="SaveAsync">@(Child is null ? "Добавить" : "Сменить пароль")</FlareButton>
+    </FlareStack>
+</FlareStack>
+
+@code {
+    /// <summary>The child whose password is reset; null to create a new child account.</summary>
+    [Parameter] public MemberDto? Child { get; set; }
+
+    private string? _name;
+    private string? _login;
+    private string? _password;
+
+    private Task SaveAsync() => SubmitAsync(() => Child is null
+        ? Api.CreateChildAsync(Session.FamilyId, new CreateChildRequest(_name ?? "", _login ?? "", _password ?? ""))
+        : Api.ResetPasswordAsync(Session.FamilyId, Child.Id, new ResetPasswordRequest(_password ?? "")));
+}

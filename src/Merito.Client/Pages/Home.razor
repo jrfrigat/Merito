@@ -1,5 +1,39 @@
 @page "/"
+@inject ApiClient Api
+@inject Session Session
 
-<FlareContainer MaxWidth="ContainerMaxWidth.Sm">
-    <FlareText Typo="TypographyScale.HeadlineMedium" Element="h1">Merito</FlareText>
-</FlareContainer>
+<PageTitle>Главная - Merito</PageTitle>
+
+<LoadState Loading="_dashboard is null" Error="@_error" OnRetry="LoadAsync">
+    @if (_dashboard is not null)
+    {
+        @if (Session.IsParent)
+        {
+            <ParentHome Dashboard="_dashboard" OnChanged="LoadAsync" />
+        }
+        else
+        {
+            <ChildHome Dashboard="_dashboard" />
+        }
+    }
+</LoadState>
+
+@code {
+    private DashboardDto? _dashboard;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _dashboard = await Api.GetDashboardAsync(Session.FamilyId);
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+    }
+}

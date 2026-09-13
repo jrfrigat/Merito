@@ -1,8 +1,21 @@
 <FlareThemeProvider Stylesheets="ThemeStylesheets.Manual">
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
-            <RouteView RouteData="@routeData" />
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(Layout.MainLayout)">
+                <FlareEmptyState Title="Страница не найдена" Description="Такой страницы нет в Merito.">
+                    <ActionContent>
+                        <FlareButton Href="">На главную</FlareButton>
+                    </ActionContent>
+                </FlareEmptyState>
+            </LayoutView>
+        </NotFound>
     </Router>
 </FlareThemeProvider>
+
+<FlareDialogProvider />
+<FlareSnackbarProvider />
+<FlareMessageBoxProvider />

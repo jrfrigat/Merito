@@ -1,0 +1,37 @@
+@inherits DialogBase
+
+<FlareStack Gap="FlareSpacing.Medium">
+    @if (Error is not null)
+    {
+        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@Error</FlareAlert>
+    }
+    <FlareTextField @bind-Value="_title" Label="Награда" MaxLength="Limits.TitleMaxLength" Required Autofocus />
+    <FlareNumericField TValue="int" @bind-Value="_cost" Label="Цена в баллах" Min="1" Max="Limits.PointsMax" SelectAllOnFocus />
+    <FlareTextArea @bind-Value="_description" Label="Описание и условия" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength" />
+    <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+        <FlareButton Loading="Busy" OnClick="SaveAsync">Сохранить</FlareButton>
+    </FlareStack>
+</FlareStack>
+
+@code {
+    /// <summary>The reward to edit; null to add a new one.</summary>
+    [Parameter] public RewardDto? Reward { get; set; }
+
+    private string? _title;
+    private string? _description;
+    private int _cost = 10;
+
+    protected override void OnInitialized()
+    {
+        if (Reward is not null) (_title, _description, _cost) = (Reward.Title, Reward.Description, Reward.Cost);
+    }
+
+    private Task SaveAsync()
+    {
+        var request = new RewardRequest(_title ?? "", _description, _cost);
+        return SubmitAsync(() => Reward is null
+            ? Api.AddRewardAsync(Session.FamilyId, request)
+            : Api.UpdateRewardAsync(Session.FamilyId, Reward.Id, request));
+    }
+}

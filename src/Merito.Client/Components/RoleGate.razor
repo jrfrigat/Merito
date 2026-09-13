@@ -1,0 +1,23 @@
+@inject Session Session
+
+@* Renders its content only for the role a page is meant for, and an explanation for the other role. *@
+@if (Session.Family?.Role == Role)
+{
+    @ChildContent
+}
+else
+{
+    <FlareEmptyState Title="Этот раздел не для вас"
+                     Description="@(Role == FamilyRole.Parent ? "Здесь работает родитель." : "Здесь работает ребенок.")">
+        <IconContent><FlareIconView Value="@MaterialDesign3Icons.Regular.Block" Size="3rem" /></IconContent>
+        <ActionContent><FlareButton Href="">На главную</FlareButton></ActionContent>
+    </FlareEmptyState>
+}
+
+@code {
+    /// <summary>The role the content is for.</summary>
+    [Parameter] public FamilyRole Role { get; set; }
+
+    /// <summary>The page content.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

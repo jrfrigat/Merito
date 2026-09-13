@@ -1,0 +1,12 @@
+@inherits LayoutComponentBase
+
+<FlareContainer MaxWidth="ContainerMaxWidth.Xs" Style="padding-block:clamp(1.5rem,8vh,4rem);">
+    <FlareStack Gap="FlareSpacing.Large">
+        <FlareStack Align="FlareAlignItems.Center" Gap="FlareSpacing.XSmall">
+            <FlareIconView Value="@MaterialDesign3Icons.Filled.Stars" Color="FlareColor.Primary" Size="3.5rem" />
+            <FlareText Typo="TypographyScale.HeadlineMedium" Weight="FontWeight.Bold" Element="p">Merito</FlareText>
+            <FlareText Typo="TypographyScale.BodyMedium" Align="TextAlign.Center">Баллы за дела для всей семьи</FlareText>
+        </FlareStack>
+        @Body
+    </FlareStack>
+</FlareContainer>

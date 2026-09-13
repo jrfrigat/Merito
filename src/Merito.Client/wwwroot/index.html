@@ -42,8 +42,10 @@
         }
         @keyframes merito-splash-pulse { 50% { transform: scale(.82); opacity: .6; } }
         @media (prefers-reduced-motion: reduce) { #flare-splash .merito-splash__star { animation: none; } }
+        /* Blazor shows this bar by setting display:block when an unhandled error happens. */
+        #blazor-error-ui { display: none; position: fixed; inset: auto 0 0 0; z-index: 1000; padding: .75rem 1rem; background: #f9dedc; color: #410e0b; }
+        #blazor-error-ui .dismiss { float: right; cursor: pointer; }
     </style>
-    <script type="importmap"></script>
 </head>
 
 <body>
@@ -61,7 +63,7 @@
         <span class="dismiss">&#10005;</span>
     </div>
 
-    <script src="_framework/blazor.webassembly#[.{fingerprint}].js" autostart="false"></script>
+    <script src="_framework/blazor.webassembly.js" autostart="false"></script>
     <script>
         Blazor.start({ applicationCulture: 'ru-RU' });
     </script>

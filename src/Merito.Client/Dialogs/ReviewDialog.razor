@@ -1,0 +1,71 @@
+@inherits DialogBase
+
+<FlareStack Gap="FlareSpacing.Medium">
+    @if (Error is not null)
+    {
+        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@Error</FlareAlert>
+    }
+    <FlareStack Gap="FlareSpacing.None">
+        <FlareText Typo="TypographyScale.LabelLarge">@Submission.ChildName - @Format.When(Submission.SubmittedAt)</FlareText>
+        <FlareText Typo="TypographyScale.TitleMedium">@Submission.Title</FlareText>
+        @if (Submission.ChildComment is not null)
+        {
+            <FlareText Typo="TypographyScale.BodyMedium">"@Submission.ChildComment"</FlareText>
+        }
+    </FlareStack>
+
+    @if (Approve)
+    {
+        <FlareNumericField TValue="int" @bind-Value="_points" Label="Баллы" Min="1" Max="Limits.PointsMax" ShowStepper SelectAllOnFocus
+                           HelperText="@PointsHint" />
+        @if (Submission.TaskId is null)
+        {
+            <FlareSwitch @bind-Value="_saveAsTask" Label="Добавить это дело в список заданий" />
+            @if (_saveAsTask)
+            {
+                <FlareToggleGroup TValue="TaskCategory" @bind-Value="_category" Mandatory>
+                    <FlareToggleButton Value="TaskCategory.Daily">Ежедневное</FlareToggleButton>
+                    <FlareToggleButton Value="TaskCategory.Extra">Дополнительное</FlareToggleButton>
+                </FlareToggleGroup>
+            }
+        }
+    }
+    <FlareTextArea @bind-Value="_comment" Label="@(Approve ? "Комментарий (необязательно)" : "Почему не засчитано")" Rows="2" AutoGrow
+                   MaxLength="Limits.TextMaxLength" />
+
+    <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+        @if (Approve)
+        {
+            <FlareButton Loading="Busy" Color="FlareColor.Success" OnClick="ApproveAsync">Засчитать @Format.Points(_points)</FlareButton>
+        }
+        else
+        {
+            <FlareButton Loading="Busy" Color="FlareColor.Error" OnClick="RejectAsync">Отклонить</FlareButton>
+        }
+    </FlareStack>
+</FlareStack>
+
+@code {
+    /// <summary>The report under review.</summary>
+    [Parameter, EditorRequired] public SubmissionDto Submission { get; set; } = default!;
+
+    /// <summary>True to approve, false to reject.</summary>
+    [Parameter] public bool Approve { get; set; }
+
+    private int _points;
+    private bool _saveAsTask = true;
+    private TaskCategory _category = TaskCategory.Extra;
+    private string? _comment;
+
+    private string PointsHint => Submission.SuggestedPoints is { } p
+        ? $"По списку: {Format.Range(p, Submission.MaxPoints)}"
+        : "Этого дела нет в списке - назначьте баллы сами";
+
+    protected override void OnParametersSet() => _points = Math.Max(1, Submission.SuggestedPoints ?? 1);
+
+    private Task ApproveAsync() => SubmitAsync(() => Api.ApproveAsync(Session.FamilyId, Submission.Id,
+        new ApproveRequest(_points, _comment, Submission.TaskId is null && _saveAsTask ? _category : null)));
+
+    private Task RejectAsync() => SubmitAsync(() => Api.RejectAsync(Session.FamilyId, Submission.Id, new RejectRequest(_comment)));
+}

@@ -1,0 +1,57 @@
+@inherits DialogBase
+
+<FlareStack Gap="FlareSpacing.Medium">
+    @if (Error is not null)
+    {
+        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@Error</FlareAlert>
+    }
+    @if (_invite is null)
+    {
+        <FlareText Typo="TypographyScale.BodyMedium">
+            Код подойдет тому, у кого уже есть аккаунт: он вводит его на экране "Вступить по коду".
+        </FlareText>
+        <FlareToggleGroup TValue="FamilyRole" @bind-Value="_role" Mandatory>
+            <FlareToggleButton Value="FamilyRole.Parent">Родитель</FlareToggleButton>
+            <FlareToggleButton Value="FamilyRole.Child">Ребенок</FlareToggleButton>
+        </FlareToggleGroup>
+        <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
+            <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+            <FlareButton Loading="_creating" OnClick="CreateAsync">Получить код</FlareButton>
+        </FlareStack>
+    }
+    else
+    {
+        <FlareStack Align="FlareAlignItems.Center" Gap="FlareSpacing.XSmall">
+            <FlareText Typo="TypographyScale.LabelLarge">Код для роли "@Format.Role(_invite.Role)"</FlareText>
+            <FlareText Typo="TypographyScale.DisplaySmall" Mono Weight="FontWeight.Bold" Element="p">@_invite.Code</FlareText>
+            <FlareText Typo="TypographyScale.BodySmall">Действует до @Format.When(_invite.ExpiresAt)</FlareText>
+        </FlareStack>
+        <FlareStack Row Justify="FlareJustifyContent.End">
+            <FlareButton OnClick="@(() => Dialog.Close())">Готово</FlareButton>
+        </FlareStack>
+    }
+</FlareStack>
+
+@code {
+    private FamilyRole _role = FamilyRole.Parent;
+    private InviteDto? _invite;
+    private bool _creating;
+
+    private async Task CreateAsync()
+    {
+        _creating = true;
+        Error = null;
+        try
+        {
+            _invite = await Api.CreateInviteAsync(Session.FamilyId, new CreateInviteRequest(_role));
+        }
+        catch (ApiException e)
+        {
+            Error = e.Message;
+        }
+        finally
+        {
+            _creating = false;
+        }
+    }
+}

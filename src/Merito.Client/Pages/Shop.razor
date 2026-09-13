@@ -1,0 +1,178 @@
+@page "/shop"
+@inject ApiClient Api
+@inject Session Session
+@inject IDialogService Dialogs
+@inject ISnackbarService Snackbar
+
+<PageTitle>Магазин - Merito</PageTitle>
+
+<FlareStack Gap="FlareSpacing.Large">
+    @if (Session.IsParent)
+    {
+        <PageHeader Title="Покупки" Subtitle="Выдайте купленное или отмените покупку с возвратом баллов">
+            <Actions><FlareButton Variant="ButtonVariant.Text" Href="catalog">Настроить награды</FlareButton></Actions>
+        </PageHeader>
+    }
+    else
+    {
+        <PageHeader Title="Магазин" Subtitle="@($"На счету {Format.Points(_balance)}")" />
+    }
+
+    <LoadState Loading="_purchases is null" Error="@_error" OnRetry="LoadAsync">
+        @if (!Session.IsParent)
+        {
+            @if (_rewards.Count == 0)
+            {
+                <FlareEmptyState Title="Магазин пока пуст" Description="Попроси родителя добавить награды.">
+                    <IconContent><FlareIconView Value="@MaterialDesign3Icons.Regular.Storefront" Size="3rem" /></IconContent>
+                </FlareEmptyState>
+            }
+            <FlareGrid MinColumnWidth="15rem" Gap="FlareSpacing.Medium">
+                @foreach (var reward in _rewards)
+                {
+                    var affordable = _balance >= reward.Cost;
+                    <FlareCard @key="reward.Id" Variant="@(affordable ? CardVariant.Elevated : CardVariant.Outlined)">
+                        <FlareCardHeader Title="@reward.Title" Subtitle="@reward.Description">
+                            <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.Redeem" Color="FlareColor.Tertiary" Size="1.75rem" /></AvatarContent>
+                        </FlareCardHeader>
+                        <FlareCardActions Align="CardActionsAlign.Between">
+                            <FlareText Typo="TypographyScale.TitleLarge" Weight="FontWeight.Bold">@Format.Points(reward.Cost)</FlareText>
+                            <FlareButton Disabled="@(!affordable)" Loading="@(_buying == reward.Id)" OnClick="@(() => BuyAsync(reward))">
+                                @(affordable ? "Купить" : $"Еще {reward.Cost - _balance}")
+                            </FlareButton>
+                        </FlareCardActions>
+                    </FlareCard>
+                }
+            </FlareGrid>
+        }
+
+        @{
+            var pending = (_purchases ?? []).Where(p => p.Status == PurchaseStatus.Pending).ToList();
+            var closed = (_purchases ?? []).Where(p => p.Status != PurchaseStatus.Pending).Take(30).ToList();
+        }
+
+        <FlareCard Variant="CardVariant.Outlined">
+            <FlareCardHeader Title="@(Session.IsParent ? "Ждут выдачи" : "Мои покупки")" />
+            @if (pending.Count == 0)
+            {
+                <FlareEmptyState Compact Title="Нет активных покупок" />
+            }
+            else
+            {
+                <FlareList TItem="object">
+                    @foreach (var p in pending)
+                    {
+                        <FlareListItem @key="p.Id" Primary="@p.Title"
+                                       Secondary="@($"{(Session.IsParent ? p.ChildName + " - " : "")}{Format.Points(p.Cost)} - {Format.When(p.CreatedAt)}")">
+                            <Leading><FlareIconView Value="@MaterialDesign3Icons.Regular.ShoppingCart" Color="FlareColor.Primary" /></Leading>
+                            <Trailing>
+                                <FlareStack Row Gap="FlareSpacing.XSmall">
+                                    <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Undo" AriaLabel="Отменить и вернуть баллы" OnClick="@(() => CancelAsync(p))" />
+                                    @if (Session.IsParent)
+                                    {
+                                        <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Check" Variant="ButtonVariant.Filled" AriaLabel="Выдано" OnClick="@(() => FulfillAsync(p))" />
+                                    }
+                                </FlareStack>
+                            </Trailing>
+                        </FlareListItem>
+                    }
+                </FlareList>
+            }
+        </FlareCard>
+
+        @if (closed.Count > 0)
+        {
+            <FlareCard Variant="CardVariant.Outlined">
+                <FlareCardHeader Title="Закрытые" />
+                <FlareList TItem="object" Dense>
+                    @foreach (var p in closed)
+                    {
+                        <FlareListItem @key="p.Id" Primary="@p.Title"
+                                       Secondary="@($"{(Session.IsParent ? p.ChildName + " - " : "")}{(p.Status == PurchaseStatus.Fulfilled ? "выдано" : "отменено")} - {Format.When(p.ResolvedAt ?? p.CreatedAt)}")">
+                            <Leading>
+                                <FlareIconView Value="@(p.Status == PurchaseStatus.Fulfilled ? MaterialDesign3Icons.Regular.CheckCircle : MaterialDesign3Icons.Regular.Cancel)"
+                                               Color="@(p.Status == PurchaseStatus.Fulfilled ? FlareColor.Success : FlareColor.Default)" />
+                            </Leading>
+                        </FlareListItem>
+                    }
+                </FlareList>
+            </FlareCard>
+        }
+    </LoadState>
+</FlareStack>
+
+@code {
+    private List<RewardDto> _rewards = [];
+    private List<PurchaseDto>? _purchases;
+    private int _balance;
+    private Guid? _buying;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            var purchases = Api.GetPurchasesAsync(Session.FamilyId, take: 60);
+            if (!Session.IsParent)
+            {
+                var rewards = Api.GetRewardsAsync(Session.FamilyId);
+                var family = Api.GetFamilyAsync(Session.FamilyId);
+                _rewards = await rewards;
+                _balance = (await family).Members.FirstOrDefault(m => m.Id == Session.Family!.MemberId)?.Balance ?? 0;
+            }
+            _purchases = await purchases;
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task BuyAsync(RewardDto reward)
+    {
+        if (await Dialogs.ConfirmAsync("Купить?", $"\"{reward.Title}\" за {Format.Points(reward.Cost)}. Баллы спишутся сразу.", "Купить", "Отмена") != true)
+            return;
+
+        _buying = reward.Id;
+        try
+        {
+            await Api.BuyAsync(Session.FamilyId, new PurchaseRequest(reward.Id));
+            Snackbar.Show("Куплено! Покажи родителю, чтобы получить награду.", SnackbarSeverity.Success);
+            await LoadAsync();
+        }
+        catch (ApiException e)
+        {
+            Snackbar.Show(e.Message, SnackbarSeverity.Error);
+        }
+        finally
+        {
+            _buying = null;
+        }
+    }
+
+    private Task FulfillAsync(PurchaseDto purchase) => RunAsync(() => Api.FulfillAsync(Session.FamilyId, purchase.Id), "Отмечено как выданное");
+
+    private async Task CancelAsync(PurchaseDto purchase)
+    {
+        if (await Dialogs.ConfirmAsync("Отменить покупку?", $"{Format.Points(purchase.Cost)} вернутся на счет.", "Отменить покупку", "Нет") != true)
+            return;
+        await RunAsync(() => Api.CancelPurchaseAsync(Session.FamilyId, purchase.Id), "Покупка отменена, баллы возвращены");
+    }
+
+    private async Task RunAsync(Func<Task> action, string done)
+    {
+        try
+        {
+            await action();
+            Snackbar.Show(done, SnackbarSeverity.Success);
+            await LoadAsync();
+        }
+        catch (ApiException e)
+        {
+            Snackbar.Show(e.Message, SnackbarSeverity.Error);
+        }
+    }
+}

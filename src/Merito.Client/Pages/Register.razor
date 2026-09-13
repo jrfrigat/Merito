@@ -1,0 +1,64 @@
+@page "/register"
+@layout AuthLayout
+@inject ApiClient Api
+@inject Session Session
+@inject NavigationManager Nav
+
+<PageTitle>Регистрация - Merito</PageTitle>
+
+<FlareCard Variant="CardVariant.Outlined">
+    <FlareCardContent>
+        <form @onsubmit="RegisterAsync" @onsubmit:preventDefault>
+            <FlareStack Gap="FlareSpacing.Medium">
+                <FlareText Typo="TypographyScale.TitleLarge" Element="h1">Регистрация родителя</FlareText>
+                <FlareText Typo="TypographyScale.BodyMedium">
+                    Аккаунты детей создаются потом, в разделе "Семья" - им почта не нужна.
+                </FlareText>
+                @if (_error is not null)
+                {
+                    <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@_error</FlareAlert>
+                }
+                <FlareTextField @bind-Value="_name" Immediate Label="Как вас называть" Autocomplete="name" Required MaxLength="Limits.NameMaxLength"
+                                Placeholder="Например, Папа" />
+                <FlareTextField @bind-Value="_email" Immediate Label="Почта" Type="email" Autocomplete="email" Required />
+                <FlarePasswordField @bind-Value="_password" Immediate Label="Пароль" Autocomplete="new-password" Required ShowStrength
+                                    HelperText="@($"Не короче {Limits.PasswordMinLength} символов")" />
+                <FlareButton Type="ButtonType.Submit" FullWidth Loading="_busy" Size="ButtonSize.Lg">Создать аккаунт</FlareButton>
+                <FlareButton Variant="ButtonVariant.Text" FullWidth Href="login">У меня уже есть аккаунт</FlareButton>
+            </FlareStack>
+        </form>
+    </FlareCardContent>
+</FlareCard>
+
+@code {
+    private string? _name;
+    private string? _email;
+    private string? _password;
+    private string? _error;
+    private bool _busy;
+
+    private async Task RegisterAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_email) || string.IsNullOrEmpty(_password))
+        {
+            _error = "Заполните все поля.";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Session.SignInAsync(await Api.RegisterAsync(new RegisterRequest(_name.Trim(), _email.Trim(), _password)));
+            Nav.NavigateTo("start");
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

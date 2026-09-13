@@ -1,0 +1,117 @@
+@inject ApiClient Api
+@inject Session Session
+@inject IDialogService Dialogs
+@inject ISnackbarService Snackbar
+
+@* The parent's home: what waits for them, every child with a balance and quick point actions, the latest entries. *@
+<FlareStack Gap="FlareSpacing.Large">
+    <PageHeader Title="@($"Здравствуйте, {Dashboard.Me.DisplayName}")" Subtitle="@Dashboard.Family.Name" />
+
+    @if (Dashboard.PendingSubmissions > 0 || Dashboard.PendingPurchases > 0)
+    {
+        <FlareStack Gap="FlareSpacing.Small">
+            @if (Dashboard.PendingSubmissions > 0)
+            {
+                <FlareCard Variant="CardVariant.Tonal" Href="review">
+                    <FlareCardHeader Title="@($"Ждут проверки: {Dashboard.PendingSubmissions}")" Subtitle="Дети отметили сделанные дела">
+                        <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.PendingActions" Color="FlareColor.Primary" Size="1.75rem" /></AvatarContent>
+                        <ActionContent><FlareIconView Value="@MaterialDesign3Icons.Regular.ChevronRight" /></ActionContent>
+                    </FlareCardHeader>
+                </FlareCard>
+            }
+            @if (Dashboard.PendingPurchases > 0)
+            {
+                <FlareCard Variant="CardVariant.Tonal" Href="shop">
+                    <FlareCardHeader Title="@($"Ждут выдачи: {Dashboard.PendingPurchases}")" Subtitle="Покупки в магазине наград">
+                        <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.Redeem" Color="FlareColor.Tertiary" Size="1.75rem" /></AvatarContent>
+                        <ActionContent><FlareIconView Value="@MaterialDesign3Icons.Regular.ChevronRight" /></ActionContent>
+                    </FlareCardHeader>
+                </FlareCard>
+            }
+        </FlareStack>
+    }
+
+    @if (Children.Count == 0)
+    {
+        <FlareCard Variant="CardVariant.Outlined">
+            <FlareEmptyState Title="В семье пока нет детей" Description="Создайте ребенку аккаунт с логином или дайте код приглашения.">
+                <IconContent><FlareIconView Value="@MaterialDesign3Icons.Regular.ChildCare" Size="3rem" /></IconContent>
+                <ActionContent><FlareButton Href="family">Добавить ребенка</FlareButton></ActionContent>
+            </FlareEmptyState>
+        </FlareCard>
+    }
+    else
+    {
+        <FlareGrid MinColumnWidth="17rem" Gap="FlareSpacing.Medium">
+            @foreach (var child in Children)
+            {
+                <FlareCard @key="child.Id" Variant="CardVariant.Elevated">
+                    <FlareCardHeader Title="@child.DisplayName" Subtitle="@(child.Login is null ? null : $"Логин: {child.Login}")">
+                        <AvatarContent><FlareAvatar Text="@child.DisplayName" /></AvatarContent>
+                    </FlareCardHeader>
+                    <FlareCardContent>
+                        <FlareStack Row Align="FlareAlignItems.Baseline" Gap="FlareSpacing.XSmall">
+                            <FlareText Typo="TypographyScale.DisplaySmall" Weight="FontWeight.Bold"
+                                       Color="@((child.Balance ?? 0) < 0 ? FlareColor.Error : FlareColor.Primary)">@(child.Balance ?? 0)</FlareText>
+                            <FlareText Typo="TypographyScale.TitleSmall">на счету</FlareText>
+                        </FlareStack>
+                    </FlareCardContent>
+                    <FlareCardActions Wrap>
+                        <FlareButton Variant="ButtonVariant.Tonal" Size="ButtonSize.Sm" OnClick="@(() => OpenPointsAsync(child, PointsDialog.PointsMode.Bonus))">
+                            <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.AddCircle" /></LeadingIcon>
+                            <ChildContent>Баллы</ChildContent>
+                        </FlareButton>
+                        <FlareButton Variant="ButtonVariant.Outlined" Size="ButtonSize.Sm" Color="FlareColor.Error"
+                                     OnClick="@(() => OpenPointsAsync(child, PointsDialog.PointsMode.Penalty))">
+                            <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Gavel" /></LeadingIcon>
+                            <ChildContent>Штраф</ChildContent>
+                        </FlareButton>
+                        <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Href="@($"history?child={child.Id}")">История</FlareButton>
+                    </FlareCardActions>
+                </FlareCard>
+            }
+        </FlareGrid>
+    }
+
+    <FlareCard Variant="CardVariant.Outlined">
+        <FlareCardHeader Title="Последние события">
+            <ActionContent><FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Href="history">Вся история</FlareButton></ActionContent>
+        </FlareCardHeader>
+        <TransactionList Items="Dashboard.RecentTransactions" ShowChild />
+    </FlareCard>
+</FlareStack>
+
+@code {
+    /// <summary>The home screen data.</summary>
+    [Parameter, EditorRequired] public DashboardDto Dashboard { get; set; } = default!;
+
+    /// <summary>Called after an action changed balances, so the page reloads.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private IReadOnlyList<MemberDto> Children => Dashboard.Family.Members.Where(m => m.Role == FamilyRole.Child).ToList();
+
+    private async Task OpenPointsAsync(MemberDto child, PointsDialog.PointsMode mode)
+    {
+        IReadOnlyList<PenaltyDto> penalties = [];
+        try
+        {
+            penalties = await Api.GetPenaltiesAsync(Session.FamilyId);
+        }
+        catch (ApiException e)
+        {
+            Snackbar.Show(e.Message, SnackbarSeverity.Error);
+            return;
+        }
+
+        var result = await Dialogs.ShowAsync<PointsDialog>(child.DisplayName, new DialogParameters()
+            .Add(nameof(PointsDialog.Child), child)
+            .Add(nameof(PointsDialog.Penalties), penalties)
+            .Add(nameof(PointsDialog.Mode), mode), new DialogOptions { Size = DialogSize.Sm });
+
+        if (!result.Cancelled)
+        {
+            Snackbar.Show("Баланс обновлен", SnackbarSeverity.Success);
+            await OnChanged.InvokeAsync();
+        }
+    }
+}

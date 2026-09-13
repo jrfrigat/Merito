@@ -1,0 +1,110 @@
+@inherits LayoutComponentBase
+@implements IAsyncDisposable
+@inject Session Session
+@inject NavigationManager Nav
+@inject IBrowserViewportService Viewport
+@inject IVersionCheckService VersionCheck
+@inject ISnackbarService Snackbar
+
+@if (Session.Family is null)
+{
+    <FlareStack Align="FlareAlignItems.Center" Justify="FlareJustifyContent.Center" Style="min-height:100dvh;">
+        <FlareProgressCircular />
+    </FlareStack>
+}
+else
+{
+    <FlareLayout>
+        <FlareLayoutAppBar>
+            <FlareStack Row Align="FlareAlignItems.Center" Gap="FlareSpacing.Small" StretchLast Style="flex:1;min-width:0;">
+                <FlareLink Href="" Underline="LinkUnderline.None" Color="FlareColor.Default">
+                    <FlareStack Row Align="FlareAlignItems.Center" Gap="FlareSpacing.XSmall">
+                        <FlareIconView Value="@MaterialDesign3Icons.Filled.Stars" Color="FlareColor.Primary" Size="2rem" />
+                        <FlareText Typo="TypographyScale.TitleLarge" Weight="FontWeight.Bold">Merito</FlareText>
+                    </FlareStack>
+                </FlareLink>
+                <FlareStack Row Align="FlareAlignItems.Center" Justify="FlareJustifyContent.End" Gap="FlareSpacing.XSmall" Style="min-width:0;">
+                    <FlareText Typo="TypographyScale.LabelLarge" Class="@Css.Classes.Hidden.BelowSm"
+                               Style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        @Session.Family.FamilyName
+                    </FlareText>
+                    <FlareColorModeToggle />
+                    <FlareIconButton Icon="@MaterialDesign3Icons.Regular.AccountCircle" Href="family" AriaLabel="Семья и аккаунт" />
+                </FlareStack>
+            </FlareStack>
+        </FlareLayoutAppBar>
+
+        @if (!_isMobile)
+        {
+            <FlareLayoutDrawer Open="true" Variant="DrawerVariant.Permanent" Width="15rem" AriaLabel="Разделы">
+                <AppNavMenu />
+            </FlareLayoutDrawer>
+        }
+
+        <FlareLayoutContent MaxWidth="ContainerMaxWidth.Md">
+            <FlareStack @key="Session.Family.FamilyId" Gap="FlareSpacing.None">
+                @Body
+            </FlareStack>
+            @if (_isMobile)
+            {
+                <AppBottomNav />
+            }
+        </FlareLayoutContent>
+    </FlareLayout>
+}
+
+@code {
+    private bool _isMobile;
+    private IAsyncDisposable? _breakpoints;
+    private readonly Guid _updateToastId = Guid.NewGuid();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Session.Changed += OnSessionChanged;
+        VersionCheck.NewVersionAvailable += OnNewVersionAsync;
+        _isMobile = (await Viewport.GetBreakpointAsync()).IsAtMost(Breakpoint.Sm);
+        await Session.EnsureLoadedAsync();
+        Guard();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _breakpoints = await Viewport.SubscribeBreakpointAsync(OnBreakpointAsync, fireImmediately: false);
+        VersionCheck.Start();
+    }
+
+    private void Guard()
+    {
+        if (!Session.IsSignedIn) Nav.NavigateTo("login");
+        else if (Session.Family is null) Nav.NavigateTo("start");
+    }
+
+    private void OnSessionChanged() => InvokeAsync(() =>
+    {
+        Guard();
+        StateHasChanged();
+    });
+
+    private Task OnBreakpointAsync(Breakpoint breakpoint)
+    {
+        var mobile = breakpoint.IsAtMost(Breakpoint.Sm);
+        if (mobile == _isMobile) return Task.CompletedTask;
+        _isMobile = mobile;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task OnNewVersionAsync(VersionCheckInfo info) => InvokeAsync(() =>
+    {
+        VersionCheck.Stop();
+        Snackbar.Show(new SnackbarMessage(_updateToastId, "Вышла новая версия Merito", SnackbarSeverity.Info,
+            DurationMs: 0, ActionText: "Обновить", OnAction: () => VersionCheck.ApplyUpdateAsync()));
+    });
+
+    public async ValueTask DisposeAsync()
+    {
+        Session.Changed -= OnSessionChanged;
+        VersionCheck.NewVersionAvailable -= OnNewVersionAsync;
+        if (_breakpoints is not null) await _breakpoints.DisposeAsync();
+    }
+}

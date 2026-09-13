@@ -69,7 +69,6 @@ if (app.Configuration.GetValue("Database:Migrate", true))
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
-app.UseBlazorFrameworkFiles();
 app.MapStaticAssets();
 
 app.UseAuthentication();

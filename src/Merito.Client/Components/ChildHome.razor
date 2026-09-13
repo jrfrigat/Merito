@@ -1,0 +1,55 @@
+@* The child's home: the balance first, then the two things a child comes for - report a done task and spend points. *@
+<FlareStack Gap="FlareSpacing.Large">
+    <PageHeader Title="@($"Привет, {Dashboard.Me.DisplayName}!")" />
+
+    <FlareCard Variant="CardVariant.Filled">
+        <FlareCardContent>
+            <FlareStack Align="FlareAlignItems.Center" Gap="FlareSpacing.XSmall">
+                <FlareText Typo="TypographyScale.TitleMedium">У тебя на счету</FlareText>
+                <FlareStack Row Align="FlareAlignItems.Center" Gap="FlareSpacing.Small">
+                    <FlareIconView Value="@MaterialDesign3Icons.Filled.Stars" Color="FlareColor.Primary" Size="3rem" />
+                    <FlareText Typo="TypographyScale.DisplayLarge" Weight="FontWeight.Bold"
+                               Color="@(Balance < 0 ? FlareColor.Error : FlareColor.Primary)">@Balance</FlareText>
+                </FlareStack>
+                <FlareText Typo="TypographyScale.TitleMedium">@Format.PointsWord(Balance)</FlareText>
+            </FlareStack>
+        </FlareCardContent>
+        <FlareCardActions FullWidth StackBelow="CardActionsStack.Never">
+            <FlareButton Size="ButtonSize.Lg" Href="tasks">
+                <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.TaskAlt" /></LeadingIcon>
+                <ChildContent>Я сделал</ChildContent>
+            </FlareButton>
+            <FlareButton Size="ButtonSize.Lg" Variant="ButtonVariant.Tonal" Href="shop">
+                <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Storefront" /></LeadingIcon>
+                <ChildContent>Магазин</ChildContent>
+            </FlareButton>
+        </FlareCardActions>
+    </FlareCard>
+
+    @if (Dashboard.PendingSubmissions > 0)
+    {
+        <FlareAlert Severity="AlertSeverity.Info" Variant="AlertVariant.Outlined">
+            Ждут проверки родителем: @Dashboard.PendingSubmissions
+        </FlareAlert>
+    }
+    @if (Dashboard.PendingPurchases > 0)
+    {
+        <FlareAlert Severity="AlertSeverity.Success" Variant="AlertVariant.Outlined">
+            Куплено и ждет выдачи: @Dashboard.PendingPurchases
+        </FlareAlert>
+    }
+
+    <FlareCard Variant="CardVariant.Outlined">
+        <FlareCardHeader Title="Последние события">
+            <ActionContent><FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Href="history">Вся история</FlareButton></ActionContent>
+        </FlareCardHeader>
+        <TransactionList Items="Dashboard.RecentTransactions" EmptyText="Отметь первое сделанное дело - и тут появятся баллы." />
+    </FlareCard>
+</FlareStack>
+
+@code {
+    /// <summary>The home screen data.</summary>
+    [Parameter, EditorRequired] public DashboardDto Dashboard { get; set; } = default!;
+
+    private int Balance => Dashboard.Me.Balance ?? 0;
+}

@@ -1,0 +1,74 @@
+@page "/history"
+@inject ApiClient Api
+@inject Session Session
+
+<PageTitle>История - Merito</PageTitle>
+
+<FlareStack Gap="FlareSpacing.Large">
+    <PageHeader Title="История баллов" />
+
+    @if (Session.IsParent && _children.Count > 1)
+    {
+        <FlareChipGroup AriaLabel="Чья история" SelectedValues="SelectedValues" SelectedValuesChanged="OnChildChangedAsync">
+            <FlareChip Value="" Label="Все дети" />
+            @foreach (var child in _children)
+            {
+                <FlareChip @key="child.Id" Value="@child.Id.ToString()" Label="@child.DisplayName" />
+            }
+        </FlareChipGroup>
+    }
+
+    <LoadState Loading="_items is null" Error="@_error" OnRetry="LoadAsync">
+        <FlareCard Variant="CardVariant.Outlined">
+            <TransactionList Items="_items ?? []" ShowChild="@(Session.IsParent && Child is null)" />
+        </FlareCard>
+    </LoadState>
+</FlareStack>
+
+@code {
+    /// <summary>Child to show, from the query string; null shows everyone a parent may see.</summary>
+    [SupplyParameterFromQuery(Name = "child")] public Guid? Child { get; set; }
+
+    private List<MemberDto> _children = [];
+    private List<TransactionDto>? _items;
+    private string? _error;
+
+    private IReadOnlyCollection<string> SelectedValues => [Child?.ToString() ?? ""];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Session.IsParent && _children.Count == 0)
+        {
+            try
+            {
+                _children = (await Api.GetFamilyAsync(Session.FamilyId)).Members.Where(m => m.Role == FamilyRole.Child).ToList();
+            }
+            catch (ApiException e)
+            {
+                _error = e.Message;
+            }
+        }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _items = await Api.GetTransactionsAsync(Session.FamilyId, Session.IsParent ? Child : null, take: 200);
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task OnChildChangedAsync(IReadOnlyCollection<string> values)
+    {
+        var value = values.FirstOrDefault();
+        Child = Guid.TryParse(value, out var id) ? id : null;
+        _items = null;
+        await LoadAsync();
+    }
+}

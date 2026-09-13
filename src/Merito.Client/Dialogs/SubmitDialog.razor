@@ -1,0 +1,39 @@
+@inherits DialogBase
+
+<FlareStack Gap="FlareSpacing.Medium">
+    @if (Error is not null)
+    {
+        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@Error</FlareAlert>
+    }
+    @if (Task is { } task)
+    {
+        <FlareStack Row Align="FlareAlignItems.Center" Gap="FlareSpacing.Small">
+            <FlareChip Label="@Format.Range(task.Points, task.MaxPoints)" Color="FlareColor.Primary" Variant="ChipVariant.Filled" />
+            <FlareText Typo="TypographyScale.BodyLarge">@task.Title</FlareText>
+        </FlareStack>
+    }
+    else
+    {
+        <FlareTextField @bind-Value="_title" Label="Что ты сделал?" MaxLength="Limits.TitleMaxLength" Autofocus Required
+                        HelperText="Родитель посмотрит и решит, сколько баллов дать" />
+    }
+    <FlareTextArea @bind-Value="_comment" Label="Комментарий для родителя" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength" />
+    <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+        <FlareButton Loading="Busy" OnClick="SendAsync">
+            <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Send" /></LeadingIcon>
+            <ChildContent>Отправить</ChildContent>
+        </FlareButton>
+    </FlareStack>
+</FlareStack>
+
+@code {
+    /// <summary>Catalog task being reported; null for custom work.</summary>
+    [Parameter] public TaskDto? Task { get; set; }
+
+    private string? _title;
+    private string? _comment;
+
+    private Task SendAsync() => SubmitAsync(() =>
+        Api.SubmitAsync(Session.FamilyId, new SubmitRequest(Task?.Id, Task is null ? _title : null, _comment)));
+}

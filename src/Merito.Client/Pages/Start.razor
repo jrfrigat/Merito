@@ -1,0 +1,101 @@
+@page "/start"
+@layout AuthLayout
+@inject ApiClient Api
+@inject Session Session
+@inject NavigationManager Nav
+
+<PageTitle>Семья - Merito</PageTitle>
+
+@if (Session.Me is { } me)
+{
+    <FlareStack Gap="FlareSpacing.Medium">
+        <FlareText Typo="TypographyScale.TitleMedium" Align="TextAlign.Center" Element="h1">
+            @(me.Families.Count == 0 ? $"{me.DisplayName}, начнем с семьи" : "Еще одна семья")
+        </FlareText>
+
+        @if (_error is not null)
+        {
+            <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@_error</FlareAlert>
+        }
+
+        <FlareCard Variant="CardVariant.Outlined">
+            <FlareCardHeader Title="Создать семью" Subtitle="Вы станете родителем и настроите задания, штрафы и магазин">
+                <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.FamilyRestroom" Color="FlareColor.Primary" Size="2rem" /></AvatarContent>
+            </FlareCardHeader>
+            <FlareCardContent>
+                <FlareStack Gap="FlareSpacing.Medium">
+                    <FlareTextField @bind-Value="_familyName" Label="Название семьи" Placeholder="Например, Ивановы" MaxLength="Limits.NameMaxLength" />
+                    <FlareSwitch @bind-Value="_seedExample" Label="Заполнить примером: 21 задание, 7 штрафов и магазин экранного времени" />
+                    <FlareButton FullWidth Loading="_creating" OnClick="CreateAsync">Создать</FlareButton>
+                </FlareStack>
+            </FlareCardContent>
+        </FlareCard>
+
+        <FlareCard Variant="CardVariant.Outlined">
+            <FlareCardHeader Title="Вступить по коду" Subtitle="@("Код дает родитель в разделе \"Семья\"")">
+                <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.Key" Color="FlareColor.Secondary" Size="2rem" /></AvatarContent>
+            </FlareCardHeader>
+            <FlareCardContent>
+                <FlareStack Gap="FlareSpacing.Medium">
+                    <FlareTextField @bind-Value="_code" Label="Код приглашения" Placeholder="ABCD2345" Autocomplete="off" />
+                    <FlareButton FullWidth Variant="ButtonVariant.Tonal" Loading="_joining" OnClick="JoinAsync">Вступить</FlareButton>
+                </FlareStack>
+            </FlareCardContent>
+        </FlareCard>
+
+        <FlareStack Row Justify="FlareJustifyContent.Center" Wrap>
+            @if (me.Families.Count > 0)
+            {
+                <FlareButton Variant="ButtonVariant.Text" Href="">Вернуться</FlareButton>
+            }
+            <FlareButton Variant="ButtonVariant.Text" OnClick="SignOutAsync">Выйти</FlareButton>
+        </FlareStack>
+    </FlareStack>
+}
+
+@code {
+    private string? _familyName;
+    private bool _seedExample = true;
+    private string? _code;
+    private string? _error;
+    private bool _creating;
+    private bool _joining;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.EnsureLoadedAsync();
+        if (!Session.IsSignedIn) Nav.NavigateTo("login");
+    }
+
+    private Task CreateAsync() => RunAsync(v => _creating = v, async () =>
+        await Api.CreateFamilyAsync(new CreateFamilyRequest(_familyName ?? "", _seedExample)));
+
+    private Task JoinAsync() => RunAsync(v => _joining = v, async () =>
+        await Api.JoinFamilyAsync(new JoinFamilyRequest(_code ?? "")));
+
+    private async Task RunAsync(Action<bool> busy, Func<Task<MembershipDto>> action)
+    {
+        busy(true);
+        _error = null;
+        try
+        {
+            var membership = await action();
+            await Session.SelectFamilyAsync(membership.FamilyId);
+            Nav.NavigateTo("");
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            busy(false);
+        }
+    }
+
+    private async Task SignOutAsync()
+    {
+        await Session.SignOutAsync();
+        Nav.NavigateTo("login");
+    }
+}

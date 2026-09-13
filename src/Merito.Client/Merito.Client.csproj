@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
-    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
     <!-- Icon catalog members are separate static getters in trimmable packages, so a Release publish
          ships only the icons the app references. -->
     <PublishTrimmed>true</PublishTrimmed>
@@ -12,7 +11,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
     <PackageReference Include="Flare.Blazor" />
     <PackageReference Include="Flare.Theme.MaterialDesign3Expressive" />
     <PackageReference Include="Flare.Icons.MaterialDesign3.Svg" />

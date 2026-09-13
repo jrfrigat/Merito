@@ -1,0 +1,35 @@
+@inherits DialogBase
+
+<FlareStack Gap="FlareSpacing.Medium">
+    @if (Error is not null)
+    {
+        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@Error</FlareAlert>
+    }
+    <FlareTextField @bind-Value="_title" Label="Нарушение" MaxLength="Limits.TitleMaxLength" Required Autofocus />
+    <FlareNumericField TValue="int" @bind-Value="_points" Label="Сколько баллов списать" Min="1" Max="Limits.PointsMax" SelectAllOnFocus />
+    <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+        <FlareButton Loading="Busy" OnClick="SaveAsync">Сохранить</FlareButton>
+    </FlareStack>
+</FlareStack>
+
+@code {
+    /// <summary>The penalty to edit; null to add a new one.</summary>
+    [Parameter] public PenaltyDto? Penalty { get; set; }
+
+    private string? _title;
+    private int _points = 5;
+
+    protected override void OnInitialized()
+    {
+        if (Penalty is not null) (_title, _points) = (Penalty.Title, Penalty.Points);
+    }
+
+    private Task SaveAsync()
+    {
+        var request = new PenaltyRequest(_title ?? "", _points);
+        return SubmitAsync(() => Penalty is null
+            ? Api.AddPenaltyAsync(Session.FamilyId, request)
+            : Api.UpdatePenaltyAsync(Session.FamilyId, Penalty.Id, request));
+    }
+}

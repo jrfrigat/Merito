@@ -1,0 +1,148 @@
+@page "/catalog"
+@inject ApiClient Api
+@inject Session Session
+@inject IDialogService Dialogs
+@inject ISnackbarService Snackbar
+
+<PageTitle>Каталог - Merito</PageTitle>
+
+<RoleGate Role="FamilyRole.Parent">
+    <FlareStack Gap="FlareSpacing.Large">
+        <PageHeader Title="Каталог" Subtitle="Задания, штрафы и награды вашей семьи" />
+
+        <LoadState Loading="_tasks is null" Error="@_error" OnRetry="LoadAsync">
+            <FlareTabs @bind-ActiveIndex="_tab">
+                <FlareTab Label="Задания" BadgeColor="FlareColor.Primary" Badge="@_tasks?.Count.ToString()">
+                    <FlareStack Gap="FlareSpacing.Small">
+                        <FlareButton Variant="ButtonVariant.Tonal" OnClick="@(() => EditTaskAsync(null))">
+                            <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Add" /></LeadingIcon>
+                            <ChildContent>Новое задание</ChildContent>
+                        </FlareButton>
+                        @foreach (var group in (_tasks ?? []).GroupBy(t => t.Category))
+                        {
+                            <FlareText Typo="TypographyScale.TitleSmall" Element="h2">@Format.Category(group.Key)</FlareText>
+                            <FlareList TItem="object" Dense>
+                                @foreach (var task in group)
+                                {
+                                    <FlareListItem @key="task.Id" Primary="@task.Title" Secondary="@task.TimeOfDay" OnClick="@(() => EditTaskAsync(task))">
+                                        <Leading><FlareChip Label="@Format.Range(task.Points, task.MaxPoints)" Color="FlareColor.Primary" Size="ChipSize.Sm" /></Leading>
+                                        <Trailing>
+                                            <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Delete" AriaLabel="Удалить задание"
+                                                             OnClick="@(() => DeleteAsync(task.Title, () => Api.DeleteTaskAsync(Session.FamilyId, task.Id)))" />
+                                        </Trailing>
+                                    </FlareListItem>
+                                }
+                            </FlareList>
+                        }
+                    </FlareStack>
+                </FlareTab>
+
+                <FlareTab Label="Штрафы" BadgeColor="FlareColor.Primary" Badge="@_penalties.Count.ToString()">
+                    <FlareStack Gap="FlareSpacing.Small">
+                        <FlareButton Variant="ButtonVariant.Tonal" OnClick="@(() => EditPenaltyAsync(null))">
+                            <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Add" /></LeadingIcon>
+                            <ChildContent>Новый штраф</ChildContent>
+                        </FlareButton>
+                        <FlareList TItem="object" Dense>
+                            @foreach (var penalty in _penalties)
+                            {
+                                <FlareListItem @key="penalty.Id" Primary="@penalty.Title" OnClick="@(() => EditPenaltyAsync(penalty))">
+                                    <Leading><FlareChip Label="@($"-{penalty.Points}")" Color="FlareColor.Error" Size="ChipSize.Sm" /></Leading>
+                                    <Trailing>
+                                        <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Delete" AriaLabel="Удалить штраф"
+                                                         OnClick="@(() => DeleteAsync(penalty.Title, () => Api.DeletePenaltyAsync(Session.FamilyId, penalty.Id)))" />
+                                    </Trailing>
+                                </FlareListItem>
+                            }
+                        </FlareList>
+                    </FlareStack>
+                </FlareTab>
+
+                <FlareTab Label="Награды" BadgeColor="FlareColor.Primary" Badge="@_rewards.Count.ToString()">
+                    <FlareStack Gap="FlareSpacing.Small">
+                        <FlareButton Variant="ButtonVariant.Tonal" OnClick="@(() => EditRewardAsync(null))">
+                            <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Add" /></LeadingIcon>
+                            <ChildContent>Новая награда</ChildContent>
+                        </FlareButton>
+                        <FlareList TItem="object" Dense>
+                            @foreach (var reward in _rewards)
+                            {
+                                <FlareListItem @key="reward.Id" Primary="@reward.Title" Secondary="@reward.Description" OnClick="@(() => EditRewardAsync(reward))">
+                                    <Leading><FlareChip Label="@reward.Cost.ToString()" Color="FlareColor.Tertiary" Size="ChipSize.Sm" /></Leading>
+                                    <Trailing>
+                                        <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Delete" AriaLabel="Удалить награду"
+                                                         OnClick="@(() => DeleteAsync(reward.Title, () => Api.DeleteRewardAsync(Session.FamilyId, reward.Id)))" />
+                                    </Trailing>
+                                </FlareListItem>
+                            }
+                        </FlareList>
+                    </FlareStack>
+                </FlareTab>
+            </FlareTabs>
+        </LoadState>
+    </FlareStack>
+</RoleGate>
+
+@code {
+    private int _tab;
+    private List<TaskDto>? _tasks;
+    private List<PenaltyDto> _penalties = [];
+    private List<RewardDto> _rewards = [];
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.IsParent) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            var tasks = Api.GetTasksAsync(Session.FamilyId);
+            var penalties = Api.GetPenaltiesAsync(Session.FamilyId);
+            var rewards = Api.GetRewardsAsync(Session.FamilyId);
+            _tasks = await tasks;
+            _penalties = await penalties;
+            _rewards = await rewards;
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private Task EditTaskAsync(TaskDto? task) =>
+        EditAsync<TaskEditDialog>(task is null ? "Новое задание" : "Задание", nameof(TaskEditDialog.Task), task);
+
+    private Task EditPenaltyAsync(PenaltyDto? penalty) =>
+        EditAsync<PenaltyEditDialog>(penalty is null ? "Новый штраф" : "Штраф", nameof(PenaltyEditDialog.Penalty), penalty);
+
+    private Task EditRewardAsync(RewardDto? reward) =>
+        EditAsync<RewardEditDialog>(reward is null ? "Новая награда" : "Награда", nameof(RewardEditDialog.Reward), reward);
+
+    private async Task EditAsync<TDialog>(string title, string parameter, object? value) where TDialog : IComponent
+    {
+        var result = await Dialogs.ShowAsync<TDialog>(title, new DialogParameters().Add(parameter, value),
+            new DialogOptions { Size = DialogSize.Sm });
+        if (result.Cancelled) return;
+        Snackbar.Show("Сохранено", SnackbarSeverity.Success);
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync(string title, Func<Task> delete)
+    {
+        if (await Dialogs.ConfirmAsync("Удалить?", $"\"{title}\" пропадет из каталога. История начислений сохранится.", "Удалить", "Отмена") != true)
+            return;
+        try
+        {
+            await delete();
+            await LoadAsync();
+        }
+        catch (ApiException e)
+        {
+            Snackbar.Show(e.Message, SnackbarSeverity.Error);
+        }
+    }
+}

@@ -1,0 +1,95 @@
+@inherits DialogBase
+
+<FlareStack Gap="FlareSpacing.Medium">
+    @if (Error is not null)
+    {
+        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@Error</FlareAlert>
+    }
+    <FlareText Typo="TypographyScale.BodyMedium">@Child.DisplayName, на счету @Format.Points(Child.Balance ?? 0)</FlareText>
+
+    <FlareToggleGroup TValue="PointsMode" @bind-Value="_mode" Mandatory>
+        <FlareToggleButton Value="PointsMode.Bonus">Начислить</FlareToggleButton>
+        <FlareToggleButton Value="PointsMode.Deduct">Списать</FlareToggleButton>
+        <FlareToggleButton Value="PointsMode.Penalty">Штраф</FlareToggleButton>
+    </FlareToggleGroup>
+
+    @if (_mode == PointsMode.Penalty)
+    {
+        <FlareSelect TValue="PenaltyDto" @bind-Value="_penalty" Items="Penalties" Label="Нарушение" Searchable
+                     ItemLabel="@(p => p is null ? "" : $"{p.Title} (-{p.Points})")" NoResultsText="Ничего не найдено" />
+        @if (Penalties.Count == 0)
+        {
+            <FlareText Typo="TypographyScale.BodySmall">Список штрафов пуст - добавьте их в разделе "Каталог".</FlareText>
+        }
+    }
+    else
+    {
+        <FlareNumericField TValue="int" @bind-Value="_amount" Label="Баллы" Min="1" Max="Limits.PointsMax" ShowStepper SelectAllOnFocus />
+    }
+
+    <FlareTextArea @bind-Value="_comment" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength"
+                   Label="@(_mode == PointsMode.Penalty ? "Комментарий (необязательно)" : "За что (обязательно)")" />
+
+    <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+        <FlareButton Loading="Busy" Color="@(_mode == PointsMode.Bonus ? FlareColor.Success : FlareColor.Error)" OnClick="SaveAsync">
+            @ActionText
+        </FlareButton>
+    </FlareStack>
+</FlareStack>
+
+@code {
+    /// <summary>The child whose balance changes.</summary>
+    [Parameter, EditorRequired] public MemberDto Child { get; set; } = default!;
+
+    /// <summary>The family's penalties.</summary>
+    [Parameter] public IReadOnlyList<PenaltyDto> Penalties { get; set; } = [];
+
+    /// <summary>The tab the dialog opens on.</summary>
+    [Parameter] public PointsMode Mode { get; set; } = PointsMode.Bonus;
+
+    private PointsMode _mode;
+    private int _amount = 5;
+    private PenaltyDto? _penalty;
+    private string? _comment;
+
+    private string ActionText => _mode switch
+    {
+        PointsMode.Bonus => $"Начислить {Format.Points(_amount)}",
+        PointsMode.Deduct => $"Списать {Format.Points(_amount)}",
+        _ => _penalty is null ? "Оштрафовать" : $"Оштрафовать на {Format.Points(_penalty.Points)}",
+    };
+
+    protected override void OnInitialized() => _mode = Mode;
+
+    private Task SaveAsync()
+    {
+        if (_mode == PointsMode.Penalty && _penalty is null)
+        {
+            Error = "Выберите нарушение.";
+            return System.Threading.Tasks.Task.CompletedTask;
+        }
+
+        return SubmitAsync(async () =>
+        {
+            if (_mode == PointsMode.Penalty)
+                await Api.ApplyPenaltyAsync(Session.FamilyId, new ApplyPenaltyRequest(Child.Id, _penalty!.Id, _comment));
+            else
+                await Api.AdjustPointsAsync(Session.FamilyId, new AdjustPointsRequest(Child.Id,
+                    _mode == PointsMode.Bonus ? _amount : -_amount, _comment ?? ""));
+        });
+    }
+
+    /// <summary>What the parent is about to do.</summary>
+    public enum PointsMode
+    {
+        /// <summary>Grant points.</summary>
+        Bonus,
+
+        /// <summary>Deduct points by hand.</summary>
+        Deduct,
+
+        /// <summary>Apply a catalog penalty.</summary>
+        Penalty,
+    }
+}
