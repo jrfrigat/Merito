@@ -4,6 +4,7 @@
 a family shop.** [Русская версия](README.ru.md)
 
 [![CI](https://github.com/jrfrigat/Merito/actions/workflows/ci.yml/badge.svg)](https://github.com/jrfrigat/Merito/actions/workflows/ci.yml)
+[![Docker Pulls](https://img.shields.io/docker/pulls/frigat/merito?logo=docker&label=Docker%20pulls)](https://hub.docker.com/r/frigat/merito)
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)
 ![Blazor WebAssembly](https://img.shields.io/badge/Blazor-WebAssembly%20PWA-5C2D91)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
@@ -83,6 +84,16 @@ The first account you register is a parent account; create the family, then add 
 
 Serve the app over HTTPS in production (the reverse proxy is the natural place): sign-in tokens travel
 in request headers, and browsers install PWAs only from secure origins.
+
+### Prebuilt image
+
+Every version tag (`v1.2.3`) publishes the image to Docker Hub as `frigat/merito` and to GitHub
+Container Registry as `ghcr.io/jrfrigat/merito`, tagged `X.Y.Z` and `latest`. To run a release
+instead of building from source, replace the `build:` section of the `merito` service with:
+
+```yaml
+    image: frigat/merito:latest   # or a pinned X.Y.Z tag
+```
 
 ## Development
 

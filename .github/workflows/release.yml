@@ -1,0 +1,106 @@
+name: Release
+
+# Runs when a version tag is pushed, e.g. v0.1.0. Builds and tests the solution, builds the app image
+# and pushes it to the GitHub Container Registry (and to Docker Hub when configured), then creates a
+# GitHub Release. The image version comes from the tag (v1.2.3 -> 1.2.3).
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # create the GitHub Release
+  packages: write   # push the container image to GHCR
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Resolve version from tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore
+        run: dotnet restore Merito.slnx
+
+      - name: Build
+        run: dotnet build Merito.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test --solution Merito.slnx -c Release --no-build
+
+      # GHCR needs a lowercase repository path (github.repository keeps the repo's case, jrfrigat/Merito).
+      # Docker Hub tags are added only when the DOCKERHUB_USERNAME variable is set, so the release still
+      # works with GHCR alone if Docker Hub is not configured.
+      - name: Compute image tags
+        id: tags
+        env:
+          DOCKERHUB_USER: ${{ vars.DOCKERHUB_USERNAME }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          GHCR="ghcr.io/${GITHUB_REPOSITORY,,}"
+          {
+            echo "list<<EOF"
+            echo "${GHCR}:${VERSION}"
+            echo "${GHCR}:latest"
+            if [ -n "${DOCKERHUB_USER}" ]; then
+              echo "docker.io/${DOCKERHUB_USER}/merito:${VERSION}"
+              echo "docker.io/${DOCKERHUB_USER}/merito:latest"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: ${{ vars.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/Merito.Server/Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+          labels: |
+            org.opencontainers.image.title=Merito
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.version.outputs.value }}
+            org.opencontainers.image.licenses=MIT
+
+      # Non-fatal, so a description hiccup never fails a release.
+      - name: Update Docker Hub description
+        if: ${{ vars.DOCKERHUB_USERNAME != '' }}
+        continue-on-error: true
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_USERNAME }}/merito
+          short-description: "Family points app: kids earn points for chores and spend them in a family shop. Blazor PWA, .NET 10, PostgreSQL."
+          readme-filepath: src/Merito.Server/dockerhub-overview.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" --generate-notes --title "${{ github.ref_name }}"

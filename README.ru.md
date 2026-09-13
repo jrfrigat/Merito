@@ -4,6 +4,7 @@
 их в семейном магазине.** [English version](README.md)
 
 [![CI](https://github.com/jrfrigat/Merito/actions/workflows/ci.yml/badge.svg)](https://github.com/jrfrigat/Merito/actions/workflows/ci.yml)
+[![Docker Pulls](https://img.shields.io/docker/pulls/frigat/merito?logo=docker&label=Docker%20pulls)](https://hub.docker.com/r/frigat/merito)
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)
 ![Blazor WebAssembly](https://img.shields.io/badge/Blazor-WebAssembly%20PWA-5C2D91)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
@@ -83,6 +84,16 @@ services:
 
 В продакшене отдавайте приложение по HTTPS (удобнее всего на обратном прокси): токены входа ходят в
 заголовках запросов, а браузеры устанавливают PWA только с защищенных адресов.
+
+### Готовый образ
+
+Каждый тег версии (`v1.2.3`) публикует образ в Docker Hub как `frigat/merito` и в GitHub Container
+Registry как `ghcr.io/jrfrigat/merito` с тегами `X.Y.Z` и `latest`. Чтобы запустить релиз, а не
+собирать из исходников, замените у сервиса `merito` раздел `build:` на:
+
+```yaml
+    image: frigat/merito:latest   # или закрепленный тег X.Y.Z
+```
 
 ## Разработка
 
