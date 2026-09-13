@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Merito</title>
+    <base href="/" />
+
+    <link href="manifest.webmanifest" rel="manifest" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <meta name="theme-color" content="#6750a4" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Component styles, then the active theme's StyleAssets in their declared order, so the first
+         frame is styled before .NET starts (FlareThemeProvider runs with Stylesheets=Manual). -->
+    <link rel="stylesheet" href="_content/Flare.Components/css/flare-components.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+    <link rel="stylesheet" href="_content/Flare.Theme.MaterialDesign3Expressive/css/components.css" />
+
+    <script src="_content/Flare.Components/js/flare-bootstrap.js"
+            data-default-theme="md3-expressive" data-default-palette="md3-violet"></script>
+
+    <style>
+        html { background: #fef7ff; }
+        html.flare-mode-dark { background: #141218; color-scheme: dark; }
+        #flare-splash {
+            position: fixed; inset: 0; z-index: 99999;
+            display: flex; align-items: center; justify-content: center;
+            background: #fef7ff;
+        }
+        html.flare-mode-dark #flare-splash { background: #141218; }
+        #flare-splash .merito-splash__star {
+            width: 72px; height: 72px;
+            animation: merito-splash-pulse 1.2s ease-in-out infinite;
+        }
+        @keyframes merito-splash-pulse { 50% { transform: scale(.82); opacity: .6; } }
+        @media (prefers-reduced-motion: reduce) { #flare-splash .merito-splash__star { animation: none; } }
+    </style>
+    <script type="importmap"></script>
+</head>
+
+<body>
+    <div id="flare-splash">
+        <svg class="merito-splash__star" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#6750a4" d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" />
+        </svg>
+    </div>
+
+    <div id="app"></div>
+
+    <div id="blazor-error-ui">
+        Произошла ошибка.
+        <a href="." class="reload">Перезагрузить</a>
+        <span class="dismiss">&#10005;</span>
+    </div>
+
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js" autostart="false"></script>
+    <script>
+        Blazor.start({ applicationCulture: 'ru-RU' });
+    </script>
+</body>
+
+</html>

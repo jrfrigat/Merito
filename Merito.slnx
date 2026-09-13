@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="docker-compose.yml" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Merito.Shared/Merito.Shared.csproj" />
+    <Project Path="src/Merito.Server/Merito.Server.csproj" />
+    <Project Path="src/Merito.Client/Merito.Client.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Merito.Server.Tests/Merito.Server.Tests.csproj" />
+  </Folder>
+</Solution>

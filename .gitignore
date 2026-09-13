@@ -1,0 +1,42 @@
+## .NET / C# ##
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.swp
+*~
+*.DS_Store
+.vs/
+TestResults/
+*.nupkg
+*.snupkg
+artifacts/
+[Dd]ebug/
+[Rr]elease/
+[Pp]ublish/
+
+## IDE ##
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.code-workspace
+
+## Node (scripts) ##
+node_modules/
+
+## Secrets: the real environment file never enters git, only .env.example ##
+.env
+.env.*
+!.env.example
+
+## Agent working material: issues, backlog, manual checks ##
+.claude/
+
+## Local agent instructions ##
+CLAUDE.md
+AGENTS.md

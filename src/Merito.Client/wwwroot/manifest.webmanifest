@@ -1,0 +1,29 @@
+{
+  "name": "Merito - баллы за дела",
+  "short_name": "Merito",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "ru",
+  "background_color": "#fef7ff",
+  "theme_color": "#6750a4",
+  "description": "Семейное приложение: задания, штрафы, баллы и магазин наград.",
+  "prefer_related_applications": false,
+  "categories": ["lifestyle", "education", "productivity"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}

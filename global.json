@@ -1,0 +1,15 @@
+{
+  // The SDK floor matches the Docker build image (mcr.microsoft.com/dotnet/sdk:10.0.400). Raise the
+  // two together: a floating `sdk:10.0` tag can resolve below this floor, and restore then exits 155
+  // before reading a single project.
+  "sdk": {
+    "version": "10.0.400",
+    "rollForward": "latestFeature",
+    "allowPrerelease": false
+  },
+  // xunit.v3 test projects are Microsoft.Testing.Platform applications; the .NET 10 SDK needs the
+  // runner selected here, and MTP takes "--report-trx" rather than VSTest's "--logger".
+  "test": {
+    "runner": "Microsoft.Testing.Platform"
+  }
+}

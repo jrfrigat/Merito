@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- API contracts shared by the server and the WebAssembly client. No package references: both
+       sides compile against the same shapes, and nothing here may pull a server or UI dependency
+       into the other ring. -->
+
+</Project>

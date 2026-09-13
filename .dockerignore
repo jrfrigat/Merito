@@ -1,0 +1,13 @@
+**/.git
+**/.gitignore
+**/bin
+**/obj
+**/.vs
+**/*.user
+**/node_modules
+**/TestResults
+.claude
+.github
+.env
+.env.*
+*.md

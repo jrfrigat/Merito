@@ -1,0 +1,20 @@
+<Project>
+  <PropertyGroup>
+    <Authors>FrigaT</Authors>
+    <Company>FrigaT</Company>
+    <Product>Merito</Product>
+    <Copyright>Copyright (c) 2026 FrigaT</Copyright>
+    <RepositoryType>git</RepositoryType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- RZ10012: an unknown tag compiles to literal markup, so a mistyped Flare component renders as
+         nothing instead of failing the build. CS8602/CS8604: a nullable dereference in a request
+         handler is a 500 in production. -->
+    <WarningsAsErrors>$(WarningsAsErrors);RZ10012;CS8602;CS8604</WarningsAsErrors>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+  </PropertyGroup>
+</Project>
