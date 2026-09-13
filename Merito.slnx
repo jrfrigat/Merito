@@ -5,6 +5,8 @@
     <File Path="global.json" />
     <File Path="docker-compose.yml" />
     <File Path="README.md" />
+    <File Path="README.ru.md" />
+    <File Path="LICENSE" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Merito.Shared/Merito.Shared.csproj" />

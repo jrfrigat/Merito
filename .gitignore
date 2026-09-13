@@ -34,6 +34,9 @@ node_modules/
 .env.*
 !.env.example
 
+## Local Docker overrides (published ports and the like) ##
+docker-compose.override.yml
+
 ## Agent working material: issues, backlog, manual checks ##
 .claude/
 
