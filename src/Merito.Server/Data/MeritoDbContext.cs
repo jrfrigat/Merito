@@ -41,6 +41,12 @@ public sealed class MeritoDbContext(DbContextOptions<MeritoDbContext> options)
     /// <summary>Durable notifications addressed to family members.</summary>
     public DbSet<AppNotification> Notifications => Set<AppNotification>();
 
+    /// <summary>Browser Web Push subscriptions.</summary>
+    public DbSet<WebPushSubscription> WebPushSubscriptions => Set<WebPushSubscription>();
+
+    /// <summary>Durable Web Push delivery queue.</summary>
+    public DbSet<WebPushDelivery> WebPushDeliveries => Set<WebPushDelivery>();
+
     /// <summary>Data protection key ring, so bearer tokens survive a container restart.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
@@ -147,6 +153,27 @@ public sealed class MeritoDbContext(DbContextOptions<MeritoDbContext> options)
             e.Property(n => n.Message).HasMaxLength(Limits.TextMaxLength);
             e.HasOne(n => n.Family).WithMany().HasForeignKey(n => n.FamilyId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(n => n.Recipient).WithMany().HasForeignKey(n => n.RecipientMemberId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<WebPushSubscription>(e =>
+        {
+            e.HasIndex(s => s.Endpoint).IsUnique();
+            e.HasIndex(s => s.MemberId);
+            e.Property(s => s.Endpoint).HasMaxLength(2048);
+            e.Property(s => s.P256dh).HasMaxLength(512);
+            e.Property(s => s.Auth).HasMaxLength(512);
+            e.HasOne(s => s.Member).WithMany().HasForeignKey(s => s.MemberId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<WebPushDelivery>(e =>
+        {
+            e.HasIndex(d => new { d.NotificationId, d.SubscriptionId }).IsUnique();
+            e.HasIndex(d => new { d.SentAt, d.NextAttemptAt });
+            e.Property(d => d.LastError).HasMaxLength(2048);
+            e.HasOne(d => d.Notification).WithMany(n => n.PushDeliveries)
+                .HasForeignKey(d => d.NotificationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(d => d.Subscription).WithMany(s => s.Deliveries)
+                .HasForeignKey(d => d.SubscriptionId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

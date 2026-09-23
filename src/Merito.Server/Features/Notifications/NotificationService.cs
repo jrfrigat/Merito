@@ -52,8 +52,39 @@ public sealed class NotificationService(MeritoDbContext db, TimeProvider clock)
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Stages a notification; the caller saves it with its domain operation.</summary>
-    public AppNotification Add(FamilyMember recipient, NotificationKind kind, string title, string message)
+    /// <summary>Stages a notification and deliveries; the caller saves them with its domain operation.</summary>
+    public async Task<AppNotification> AddAsync(
+        FamilyMember recipient, NotificationKind kind, string title, string message, CancellationToken ct = default)
+    {
+        var notification = Create(recipient, kind, title, message);
+        var subscriptionIds = await db.WebPushSubscriptions
+            .Where(s => s.MemberId == recipient.Id)
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+        AddDeliveries(notification, subscriptionIds);
+        return notification;
+    }
+
+    /// <summary>Stages the same notification for every active parent in a family.</summary>
+    public async Task AddForParentsAsync(Guid familyId, NotificationKind kind, string title, string message, CancellationToken ct = default)
+    {
+        var parents = await db.Members
+            .Where(m => m.FamilyId == familyId && m.IsActive && m.Role == FamilyRole.Parent)
+            .ToListAsync(ct);
+        var parentIds = parents.Select(p => p.Id).ToArray();
+        var subscriptions = await db.WebPushSubscriptions
+            .Where(s => parentIds.Contains(s.MemberId))
+            .Select(s => new { s.Id, s.MemberId })
+            .ToListAsync(ct);
+
+        foreach (var parent in parents)
+        {
+            var notification = Create(parent, kind, title, message);
+            AddDeliveries(notification, subscriptions.Where(s => s.MemberId == parent.Id).Select(s => s.Id));
+        }
+    }
+
+    private AppNotification Create(FamilyMember recipient, NotificationKind kind, string title, string message)
     {
         var notification = new AppNotification
         {
@@ -69,12 +100,17 @@ public sealed class NotificationService(MeritoDbContext db, TimeProvider clock)
         return notification;
     }
 
-    /// <summary>Stages the same notification for every active parent in a family.</summary>
-    public async Task AddForParentsAsync(Guid familyId, NotificationKind kind, string title, string message, CancellationToken ct = default)
+    private void AddDeliveries(AppNotification notification, IEnumerable<Guid> subscriptionIds)
     {
-        var parents = await db.Members
-            .Where(m => m.FamilyId == familyId && m.IsActive && m.Role == FamilyRole.Parent)
-            .ToListAsync(ct);
-        foreach (var parent in parents) Add(parent, kind, title, message);
+        foreach (var subscriptionId in subscriptionIds)
+        {
+            db.WebPushDeliveries.Add(new WebPushDelivery
+            {
+                Id = Guid.NewGuid(),
+                NotificationId = notification.Id,
+                SubscriptionId = subscriptionId,
+                NextAttemptAt = notification.CreatedAt,
+            });
+        }
     }
 }

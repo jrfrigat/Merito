@@ -1,12 +1,18 @@
+using System.Net.Http.Json;
 using Merito.Server.Data;
 using Merito.Server.Infrastructure;
 using Merito.Server.Tests.Support;
 using Merito.Shared;
+using Merito.Shared.Contracts;
+using Microsoft.EntityFrameworkCore;
 
 namespace Merito.Server.Tests;
 
 public sealed class NotificationTests
 {
+    private static readonly WebPushSubscriptionRequest PushRequest = new(
+        "https://push.example.test/subscription-1", "p256dh-key", "auth-key");
+
     [Fact]
     public async Task Every_parent_receives_positive_and_negative_balance_changes()
     {
@@ -60,8 +66,8 @@ public sealed class NotificationTests
     {
         await using var t = await TestDb.CreateAsync();
         var (parent, child) = await t.AddFamilyAsync();
-        t.Notifications.Add(parent, NotificationKind.PointsCredited, "Начисление", "+5");
-        t.Notifications.Add(child, NotificationKind.SubmissionApproved, "Засчитано", "Дело принято");
+        await t.Notifications.AddAsync(parent, NotificationKind.PointsCredited, "Начисление", "+5");
+        await t.Notifications.AddAsync(child, NotificationKind.SubmissionApproved, "Засчитано", "Дело принято");
         await t.Db.SaveChangesAsync();
 
         var parentItems = await t.Notifications.ListAsync(parent, 50);
@@ -80,7 +86,7 @@ public sealed class NotificationTests
     {
         await using var t = await TestDb.CreateAsync();
         var (parent, child) = await t.AddFamilyAsync();
-        var notification = t.Notifications.Add(child, NotificationKind.SubmissionRejected, "Отклонено", "Попробуй еще раз");
+        var notification = await t.Notifications.AddAsync(child, NotificationKind.SubmissionRejected, "Отклонено", "Попробуй еще раз");
         await t.Db.SaveChangesAsync();
 
         var error = await Assert.ThrowsAsync<DomainException>(() =>
@@ -95,14 +101,70 @@ public sealed class NotificationTests
     {
         await using var t = await TestDb.CreateAsync();
         var (parent, child) = await t.AddFamilyAsync();
-        t.Notifications.Add(parent, NotificationKind.PointsCredited, "Начисление", "+5");
-        t.Notifications.Add(parent, NotificationKind.PointsDebited, "Списание", "-2");
-        t.Notifications.Add(child, NotificationKind.SubmissionApproved, "Засчитано", "Готово");
+        await t.Notifications.AddAsync(parent, NotificationKind.PointsCredited, "Начисление", "+5");
+        await t.Notifications.AddAsync(parent, NotificationKind.PointsDebited, "Списание", "-2");
+        await t.Notifications.AddAsync(child, NotificationKind.SubmissionApproved, "Засчитано", "Готово");
         await t.Db.SaveChangesAsync();
 
         await t.Notifications.MarkAllReadAsync(parent);
 
         Assert.Equal(0, await t.Notifications.CountUnreadAsync(parent));
         Assert.Equal(1, await t.Notifications.CountUnreadAsync(child));
+    }
+
+    [Fact]
+    public async Task Notification_queues_delivery_only_for_existing_subscriptions()
+    {
+        await using var t = await TestDb.CreateAsync();
+        var (parent, child) = await t.AddFamilyAsync();
+        await t.PushSubscriptions.SubscribeAsync(child, PushRequest);
+
+        var queued = await t.Notifications.AddAsync(child, NotificationKind.SubmissionApproved, "Засчитано", "Готово");
+        var beforeSubscription = await t.Notifications.AddAsync(parent, NotificationKind.PointsCredited, "Начисление", "+5");
+        await t.Db.SaveChangesAsync();
+        await t.PushSubscriptions.SubscribeAsync(parent, PushRequest with { Endpoint = "https://push.example.test/late" });
+
+        var delivery = await t.Db.WebPushDeliveries.SingleAsync();
+        Assert.Equal(queued.Id, delivery.NotificationId);
+        Assert.DoesNotContain(await t.Db.WebPushDeliveries.ToListAsync(), d => d.NotificationId == beforeSubscription.Id);
+    }
+
+    [Fact]
+    public async Task Subscription_cannot_be_taken_or_removed_by_another_member()
+    {
+        await using var t = await TestDb.CreateAsync();
+        var (parent, child) = await t.AddFamilyAsync();
+        await t.PushSubscriptions.SubscribeAsync(parent, PushRequest);
+
+        var error = await Assert.ThrowsAsync<DomainException>(() =>
+            t.PushSubscriptions.SubscribeAsync(child, PushRequest));
+        Assert.Equal(DomainError.Conflict, error.Error);
+
+        await t.PushSubscriptions.UnsubscribeAsync(child, PushRequest.Endpoint);
+        Assert.Single(await t.Db.WebPushSubscriptions.ToListAsync());
+        await t.PushSubscriptions.UnsubscribeAsync(parent, PushRequest.Endpoint);
+        Assert.Empty(await t.Db.WebPushSubscriptions.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Push_api_requires_family_access_and_returns_only_public_key()
+    {
+        using var factory = new MeritoApiFactory();
+        var anonymous = factory.CreateClient();
+        var missing = await anonymous.GetAsync($"/api/families/{Guid.NewGuid()}/notifications/push/public-key");
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, missing.StatusCode);
+
+        var parent = await factory.RegisterParentAsync("PushParent");
+        var created = await parent.PostAsJsonAsync("/api/families", new CreateFamilyRequest("Push", false));
+        created.EnsureSuccessStatusCode();
+        var family = await created.Content.ReadFromJsonAsync<MembershipDto>();
+
+        var key = await parent.GetFromJsonAsync<WebPushPublicKeyDto>(
+            $"/api/families/{family!.FamilyId}/notifications/push/public-key");
+        Assert.Equal("test-public-key", key!.PublicKey);
+
+        var subscribe = await parent.PostAsJsonAsync(
+            $"/api/families/{family.FamilyId}/notifications/push/subscriptions", PushRequest);
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, subscribe.StatusCode);
     }
 }

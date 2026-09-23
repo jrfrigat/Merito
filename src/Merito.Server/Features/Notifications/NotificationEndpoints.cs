@@ -1,6 +1,7 @@
 using Merito.Server.Features.Families;
 using Merito.Server.Infrastructure;
 using Merito.Shared.Contracts;
+using Microsoft.Extensions.Options;
 
 namespace Merito.Server.Features.Notifications;
 
@@ -27,6 +28,27 @@ public static class NotificationEndpoints
         family.MapPost("/read-all", async (Guid familyId, HttpContext http, FamilyAccess access, NotificationService service, CancellationToken ct) =>
         {
             await service.MarkAllReadAsync(await access.RequireAsync(familyId, http.User.GetUserId(), ct: ct), ct);
+            return Results.NoContent();
+        });
+
+        family.MapGet("/push/public-key", async (Guid familyId, HttpContext http, FamilyAccess access,
+            IOptions<WebPushOptions> options, CancellationToken ct) =>
+        {
+            await access.RequireAsync(familyId, http.User.GetUserId(), ct: ct);
+            return new WebPushPublicKeyDto(options.Value.PublicKey);
+        });
+
+        family.MapPost("/push/subscriptions", async (Guid familyId, WebPushSubscriptionRequest request,
+            HttpContext http, FamilyAccess access, WebPushSubscriptionService service, CancellationToken ct) =>
+        {
+            await service.SubscribeAsync(await access.RequireAsync(familyId, http.User.GetUserId(), ct: ct), request, ct);
+            return Results.NoContent();
+        });
+
+        family.MapPost("/push/unsubscribe", async (Guid familyId, WebPushUnsubscribeRequest request,
+            HttpContext http, FamilyAccess access, WebPushSubscriptionService service, CancellationToken ct) =>
+        {
+            await service.UnsubscribeAsync(await access.RequireAsync(familyId, http.User.GetUserId(), ct: ct), request.Endpoint, ct);
             return Results.NoContent();
         });
 

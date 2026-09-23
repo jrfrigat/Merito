@@ -22,6 +22,7 @@ public sealed class TestDb : IAsyncDisposable
         Db = db;
         Clock = new ManualClock();
         Notifications = new NotificationService(db, Clock);
+        PushSubscriptions = new WebPushSubscriptionService(db, Clock);
         Ledger = new LedgerService(db, Notifications, Clock);
         Access = new FamilyAccess(db);
         Families = new FamilyService(db, Clock);
@@ -35,6 +36,7 @@ public sealed class TestDb : IAsyncDisposable
     public ManualClock Clock { get; }
     public LedgerService Ledger { get; }
     public NotificationService Notifications { get; }
+    public WebPushSubscriptionService PushSubscriptions { get; }
     public FamilyAccess Access { get; }
     public FamilyService Families { get; }
     public CatalogService Catalog { get; }

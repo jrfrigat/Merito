@@ -56,6 +56,8 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<CatalogService>();
 builder.Services.AddScoped<LedgerService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<WebPushSubscriptionService>();
+builder.Services.Configure<WebPushOptions>(builder.Configuration.GetSection(WebPushOptions.SectionName));
 builder.Services.AddScoped<PointsService>();
 builder.Services.AddScoped<SubmissionService>();
 builder.Services.AddScoped<ShopService>();

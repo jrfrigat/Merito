@@ -120,7 +120,7 @@ public sealed class SubmissionService(MeritoDbContext db, LedgerService ledger, 
             submissionId: submission.Id, ct: ct);
         var approvedMessage = $"{submission.Title}: +{points} баллов.";
         if (!string.IsNullOrWhiteSpace(comment)) approvedMessage += $" {comment}";
-        notifications.Add(submission.ChildMember, NotificationKind.SubmissionApproved, "Дело засчитано", approvedMessage);
+        await notifications.AddAsync(submission.ChildMember, NotificationKind.SubmissionApproved, "Дело засчитано", approvedMessage, ct);
         await db.SaveChangesAsync(ct);
     }
 
@@ -137,7 +137,7 @@ public sealed class SubmissionService(MeritoDbContext db, LedgerService ledger, 
         submission.Version = Guid.NewGuid();
         var rejectedMessage = submission.Title + ".";
         if (!string.IsNullOrWhiteSpace(comment)) rejectedMessage += $" {comment}";
-        notifications.Add(submission.ChildMember, NotificationKind.SubmissionRejected, "Дело не засчитано", rejectedMessage);
+        await notifications.AddAsync(submission.ChildMember, NotificationKind.SubmissionRejected, "Дело не засчитано", rejectedMessage, ct);
         await db.SaveChangesAsync(ct);
     }
 
