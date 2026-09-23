@@ -25,6 +25,8 @@ public sealed class MeritoApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Database:Migrate", "false");
         builder.UseSetting("ConnectionStrings:Merito", "Host=unused");
         builder.UseSetting("WebPush:PublicKey", "test-public-key");
+        builder.UseSetting("WebPush:PrivateKey", "test-private-key");
+        builder.UseSetting("WebPush:Subject", "mailto:test@example.com");
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<DbContextOptions<MeritoDbContext>>();

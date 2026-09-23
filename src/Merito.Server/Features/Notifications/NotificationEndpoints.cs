@@ -35,7 +35,8 @@ public static class NotificationEndpoints
             IOptions<WebPushOptions> options, CancellationToken ct) =>
         {
             await access.RequireAsync(familyId, http.User.GetUserId(), ct: ct);
-            return new WebPushPublicKeyDto(options.Value.PublicKey);
+            return new WebPushPublicKeyDto(
+                WebPushDeliveryWorker.IsConfigured(options.Value) ? options.Value.PublicKey : "");
         });
 
         family.MapPost("/push/subscriptions", async (Guid familyId, WebPushSubscriptionRequest request,
