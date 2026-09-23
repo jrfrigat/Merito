@@ -1,0 +1,190 @@
+@page "/notifications"
+@inject ApiClient Api
+@inject Session Session
+@inject NotificationCenter NotificationCenter
+
+<PageTitle>Уведомления - Merito</PageTitle>
+
+<FlareStack Gap="FlareSpacing.Large">
+    <PageHeader Title="Уведомления" Subtitle="События по баллам и проверке дел">
+        <Actions>
+            @if (NotificationCenter.BrowserPermission is "default" or "unknown")
+            {
+                <FlareButton Variant="ButtonVariant.Tonal" Loading="_enablingBrowser" OnClick="EnableBrowserAsync">
+                    <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.NotificationsActive" /></LeadingIcon>
+                    <ChildContent>Включить системные</ChildContent>
+                </FlareButton>
+            }
+            @if (_items?.Any(x => x.ReadAt is null) == true)
+            {
+                <FlareButton Variant="ButtonVariant.Text" Loading="_markingAll" OnClick="MarkAllReadAsync">
+                    <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.DoneAll" /></LeadingIcon>
+                    <ChildContent>Прочитать все</ChildContent>
+                </FlareButton>
+            }
+        </Actions>
+    </PageHeader>
+
+    @if (NotificationCenter.BrowserPermission == "granted")
+    {
+        <FlareAlert Severity="AlertSeverity.Success" Variant="AlertVariant.Outlined">
+            Системные уведомления включены для этого браузера.
+        </FlareAlert>
+    }
+    else if (NotificationCenter.BrowserPermission == "denied")
+    {
+        <FlareAlert Severity="AlertSeverity.Warning" Variant="AlertVariant.Outlined">
+            Системные уведомления запрещены в настройках браузера. Внутри приложения они продолжат работать.
+        </FlareAlert>
+    }
+
+    <LoadState Loading="_items is null" Error="@_error" OnRetry="LoadAsync">
+        @if (_items is { Count: 0 })
+        {
+            <FlareEmptyState Title="Пока нет уведомлений" Description="Здесь появятся изменения баллов и результаты проверки дел.">
+                <IconContent><FlareIconView Value="@MaterialDesign3Icons.Regular.Notifications" Size="2.5rem" /></IconContent>
+            </FlareEmptyState>
+        }
+        else
+        {
+            <FlareStack Gap="FlareSpacing.Small">
+                @foreach (var item in _items ?? [])
+                {
+                    var unread = item.ReadAt is null;
+                    <FlareCard @key="item.Id" Variant="@(unread ? CardVariant.Filled : CardVariant.Outlined)">
+                        <FlareCardContent>
+                            <FlareStack Row Align="FlareAlignItems.Start" Gap="FlareSpacing.Medium">
+                                <FlareAvatar Color="@Color(item.Kind)" Size="AvatarSize.Sm">
+                                    <FallbackContent><FlareIconView Value="@Icon(item.Kind)" /></FallbackContent>
+                                </FlareAvatar>
+                                <FlareStack Gap="FlareSpacing.XSmall" Style="flex:1;min-width:0;">
+                                    <FlareStack Row Align="FlareAlignItems.Center" Gap="FlareSpacing.XSmall">
+                                        <FlareText Typo="TypographyScale.TitleMedium" Weight="@(unread ? FontWeight.Bold : FontWeight.Medium)">@item.Title</FlareText>
+                                        @if (unread)
+                                        {
+                                            <span aria-label="Непрочитано" style="width:.55rem;height:.55rem;border-radius:50%;background:var(--flare-color-primary,#6750a4);flex:none;"></span>
+                                        }
+                                    </FlareStack>
+                                    <FlareText Typo="TypographyScale.BodyMedium">@item.Message</FlareText>
+                                    <FlareText Typo="TypographyScale.LabelSmall">@Format.When(item.CreatedAt)</FlareText>
+                                </FlareStack>
+                            </FlareStack>
+                        </FlareCardContent>
+                        @if (unread)
+                        {
+                            <FlareCardActions Align="CardActionsAlign.End">
+                                <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm"
+                                             Loading="@(_marking == item.Id)" Disabled="@(_marking is not null)"
+                                             OnClick="@(() => MarkReadAsync(item))">Прочитано</FlareButton>
+                            </FlareCardActions>
+                        }
+                    </FlareCard>
+                }
+            </FlareStack>
+        }
+    </LoadState>
+</FlareStack>
+
+@code {
+    private List<NotificationDto>? _items;
+    private string? _error;
+    private Guid? _marking;
+    private bool _markingAll;
+    private bool _enablingBrowser;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _items = await Api.GetNotificationsAsync(Session.FamilyId, take: 100);
+            await NotificationCenter.RefreshAsync();
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task MarkReadAsync(NotificationDto item)
+    {
+        if (item.ReadAt is not null || _marking is not null) return;
+        _marking = item.Id;
+        _error = null;
+        try
+        {
+            await Api.MarkNotificationReadAsync(Session.FamilyId, item.Id);
+            Replace(item with { ReadAt = DateTime.UtcNow });
+            await NotificationCenter.RefreshAsync();
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _marking = null;
+        }
+    }
+
+    private async Task MarkAllReadAsync()
+    {
+        if (_items is null || _markingAll) return;
+        _markingAll = true;
+        _error = null;
+        try
+        {
+            await Api.MarkAllNotificationsReadAsync(Session.FamilyId);
+            var readAt = DateTime.UtcNow;
+            _items = _items.Select(x => x.ReadAt is null ? x with { ReadAt = readAt } : x).ToList();
+            await NotificationCenter.RefreshAsync();
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _markingAll = false;
+        }
+    }
+
+    private async Task EnableBrowserAsync()
+    {
+        if (_enablingBrowser) return;
+        _enablingBrowser = true;
+        try
+        {
+            await NotificationCenter.EnableBrowserNotificationsAsync();
+        }
+        finally
+        {
+            _enablingBrowser = false;
+        }
+    }
+
+    private void Replace(NotificationDto replacement)
+    {
+        if (_items is null) return;
+        var index = _items.FindIndex(x => x.Id == replacement.Id);
+        if (index >= 0) _items[index] = replacement;
+    }
+
+    private static FlareIcon Icon(NotificationKind kind) => kind switch
+    {
+        NotificationKind.PointsCredited => MaterialDesign3Icons.Regular.AddCircle,
+        NotificationKind.PointsDebited => MaterialDesign3Icons.Regular.DoNotDisturbOn,
+        NotificationKind.SubmissionApproved => MaterialDesign3Icons.Regular.CheckCircle,
+        NotificationKind.SubmissionRejected => MaterialDesign3Icons.Regular.Cancel,
+        _ => MaterialDesign3Icons.Regular.Notifications,
+    };
+
+    private static FlareColor Color(NotificationKind kind) => kind switch
+    {
+        NotificationKind.PointsCredited or NotificationKind.SubmissionApproved => FlareColor.Success,
+        NotificationKind.PointsDebited or NotificationKind.SubmissionRejected => FlareColor.Error,
+        _ => FlareColor.Primary,
+    };
+}

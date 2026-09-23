@@ -1,6 +1,7 @@
 using Merito.Server.Data;
 using Merito.Server.Features.Catalog;
 using Merito.Server.Features.Families;
+using Merito.Server.Features.Notifications;
 using Merito.Server.Features.Points;
 using Merito.Server.Features.Shop;
 using Merito.Server.Features.Submissions;
@@ -20,11 +21,12 @@ public sealed class TestDb : IAsyncDisposable
         _connection = connection;
         Db = db;
         Clock = new ManualClock();
-        Ledger = new LedgerService(db, Clock);
+        Notifications = new NotificationService(db, Clock);
+        Ledger = new LedgerService(db, Notifications, Clock);
         Access = new FamilyAccess(db);
         Families = new FamilyService(db, Clock);
         Catalog = new CatalogService(db, Clock);
-        Submissions = new SubmissionService(db, Ledger, Clock);
+        Submissions = new SubmissionService(db, Ledger, Notifications, Clock);
         Points = new PointsService(db, Access, Ledger);
         Shop = new ShopService(db, Ledger, Clock);
     }
@@ -32,6 +34,7 @@ public sealed class TestDb : IAsyncDisposable
     public MeritoDbContext Db { get; }
     public ManualClock Clock { get; }
     public LedgerService Ledger { get; }
+    public NotificationService Notifications { get; }
     public FamilyAccess Access { get; }
     public FamilyService Families { get; }
     public CatalogService Catalog { get; }

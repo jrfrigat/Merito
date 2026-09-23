@@ -70,6 +70,16 @@ public sealed class ApiClient(HttpClient http)
     public Task FulfillAsync(Guid f, Guid id) => SendEmpty(HttpMethod.Post, $"api/families/{f}/purchases/{id}/fulfill");
     public Task CancelPurchaseAsync(Guid f, Guid id) => SendEmpty(HttpMethod.Post, $"api/families/{f}/purchases/{id}/cancel");
 
+    // Notifications
+    public Task<List<NotificationDto>> GetNotificationsAsync(Guid f, int take = 50) =>
+        Get($"api/families/{f}/notifications?take={take}", Json.ListNotificationDto);
+    public Task<UnreadCountDto> GetUnreadNotificationCountAsync(Guid f) =>
+        Get($"api/families/{f}/notifications/unread-count", Json.UnreadCountDto);
+    public Task MarkNotificationReadAsync(Guid f, Guid id) =>
+        SendEmpty(HttpMethod.Post, $"api/families/{f}/notifications/{id}/read");
+    public Task MarkAllNotificationsReadAsync(Guid f) =>
+        SendEmpty(HttpMethod.Post, $"api/families/{f}/notifications/read-all");
+
     private async Task<TResult> Get<TResult>(string url, JsonTypeInfo<TResult> resultInfo)
     {
         using var response = await SendCore(HttpMethod.Get, url, null);

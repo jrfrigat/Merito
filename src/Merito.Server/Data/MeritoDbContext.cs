@@ -38,6 +38,9 @@ public sealed class MeritoDbContext(DbContextOptions<MeritoDbContext> options)
     /// <summary>Bought rewards.</summary>
     public DbSet<Purchase> Purchases => Set<Purchase>();
 
+    /// <summary>Durable notifications addressed to family members.</summary>
+    public DbSet<AppNotification> Notifications => Set<AppNotification>();
+
     /// <summary>Data protection key ring, so bearer tokens survive a container restart.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
@@ -134,6 +137,16 @@ public sealed class MeritoDbContext(DbContextOptions<MeritoDbContext> options)
             e.HasOne<Reward>().WithMany().HasForeignKey(p => p.RewardId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.ChildMember).WithMany().HasForeignKey(p => p.ChildMemberId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.ResolvedBy).WithMany().HasForeignKey(p => p.ResolvedByMemberId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AppNotification>(e =>
+        {
+            e.HasIndex(n => new { n.RecipientMemberId, n.CreatedAt });
+            e.Property(n => n.Kind).HasConversion<string>().HasMaxLength(32);
+            e.Property(n => n.Title).HasMaxLength(Limits.TitleMaxLength);
+            e.Property(n => n.Message).HasMaxLength(Limits.TextMaxLength);
+            e.HasOne(n => n.Family).WithMany().HasForeignKey(n => n.FamilyId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(n => n.Recipient).WithMany().HasForeignKey(n => n.RecipientMemberId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

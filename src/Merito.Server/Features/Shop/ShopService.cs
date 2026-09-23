@@ -52,7 +52,8 @@ public sealed class ShopService(MeritoDbContext db, LedgerService ledger, TimePr
             CreatedAt = clock.GetUtcNow().UtcDateTime,
         };
         db.Purchases.Add(purchase);
-        ledger.Post(child, -reward.Cost, TransactionKind.Purchase, reward.Title, null, child, purchaseId: purchase.Id);
+        await ledger.PostAsync(child, -reward.Cost, TransactionKind.Purchase, reward.Title, null, child,
+            purchaseId: purchase.Id, ct: ct);
         await db.SaveChangesAsync(ct);
 
         return new PurchaseDto(purchase.Id, child.Id, child.User.DisplayName, reward.Id, purchase.Title, purchase.Cost,
@@ -75,7 +76,8 @@ public sealed class ShopService(MeritoDbContext db, LedgerService ledger, TimePr
             throw DomainException.NotFound("Покупка не найдена.");
 
         Resolve(purchase, PurchaseStatus.Cancelled, caller);
-        ledger.Post(purchase.ChildMember, purchase.Cost, TransactionKind.Refund, purchase.Title, null, caller, purchaseId: purchase.Id);
+        await ledger.PostAsync(purchase.ChildMember, purchase.Cost, TransactionKind.Refund, purchase.Title, null, caller,
+            purchaseId: purchase.Id, ct: ct);
         await db.SaveChangesAsync(ct);
     }
 
@@ -91,6 +93,7 @@ public sealed class ShopService(MeritoDbContext db, LedgerService ledger, TimePr
     {
         var purchase = await db.Purchases
             .Include(p => p.ChildMember)
+            .ThenInclude(m => m.User)
             .FirstOrDefaultAsync(p => p.Id == purchaseId && p.FamilyId == caller.FamilyId, ct)
             ?? throw DomainException.NotFound("Покупка не найдена.");
         if (purchase.Status != PurchaseStatus.Pending)

@@ -1,4 +1,5 @@
 using Merito.Server.Data;
+using Merito.Server.Features.Notifications;
 using Merito.Server.Features.Points;
 using Merito.Server.Infrastructure;
 using Merito.Shared;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Merito.Server.Features.Submissions;
 
 /// <summary>Children report done work; parents approve it with points or reject it.</summary>
-public sealed class SubmissionService(MeritoDbContext db, LedgerService ledger, TimeProvider clock)
+public sealed class SubmissionService(MeritoDbContext db, LedgerService ledger, NotificationService notifications, TimeProvider clock)
 {
     /// <summary>The largest page a list request returns.</summary>
     public const int MaxTake = 200;
@@ -115,7 +116,11 @@ public sealed class SubmissionService(MeritoDbContext db, LedgerService ledger, 
         submission.ReviewedByMemberId = parent.Id;
         submission.Version = Guid.NewGuid();
 
-        ledger.Post(submission.ChildMember, points, TransactionKind.Task, submission.Title, comment, parent, submissionId: submission.Id);
+        await ledger.PostAsync(submission.ChildMember, points, TransactionKind.Task, submission.Title, comment, parent,
+            submissionId: submission.Id, ct: ct);
+        var approvedMessage = $"{submission.Title}: +{points} баллов.";
+        if (!string.IsNullOrWhiteSpace(comment)) approvedMessage += $" {comment}";
+        notifications.Add(submission.ChildMember, NotificationKind.SubmissionApproved, "Дело засчитано", approvedMessage);
         await db.SaveChangesAsync(ct);
     }
 
@@ -130,6 +135,9 @@ public sealed class SubmissionService(MeritoDbContext db, LedgerService ledger, 
         submission.ReviewedAt = clock.GetUtcNow().UtcDateTime;
         submission.ReviewedByMemberId = parent.Id;
         submission.Version = Guid.NewGuid();
+        var rejectedMessage = submission.Title + ".";
+        if (!string.IsNullOrWhiteSpace(comment)) rejectedMessage += $" {comment}";
+        notifications.Add(submission.ChildMember, NotificationKind.SubmissionRejected, "Дело не засчитано", rejectedMessage);
         await db.SaveChangesAsync(ct);
     }
 
@@ -137,6 +145,7 @@ public sealed class SubmissionService(MeritoDbContext db, LedgerService ledger, 
     {
         var submission = await db.Submissions
             .Include(s => s.ChildMember)
+            .ThenInclude(m => m.User)
             .FirstOrDefaultAsync(s => s.Id == submissionId && s.FamilyId == parent.FamilyId, ct)
             ?? throw DomainException.NotFound("Отметка не найдена.");
         if (submission.Status != SubmissionStatus.Pending)

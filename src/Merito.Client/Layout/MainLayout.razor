@@ -5,6 +5,7 @@
 @inject IBrowserViewportService Viewport
 @inject IVersionCheckService VersionCheck
 @inject ISnackbarService Snackbar
+@inject NotificationCenter NotificationCenter
 
 @if (Session.Family is null)
 {
@@ -29,6 +30,16 @@ else
                         @Session.Family.FamilyName
                     </FlareText>
                     <FlareColorModeToggle />
+                    <span style="position:relative;display:inline-flex;">
+                        <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Notifications" Href="notifications" AriaLabel="Уведомления" />
+                        @if (NotificationCenter.UnreadCount > 0)
+                        {
+                            <span aria-hidden="true"
+                                  style="position:absolute;right:-.2rem;top:-.15rem;min-width:1.1rem;height:1.1rem;padding:0 .25rem;border-radius:.55rem;background:var(--flare-color-error,#ba1a1a);color:var(--flare-color-on-error,#fff);font-size:.68rem;line-height:1.1rem;text-align:center;font-weight:700;pointer-events:none;">
+                                @(NotificationCenter.UnreadCount > 99 ? "99+" : NotificationCenter.UnreadCount)
+                            </span>
+                        }
+                    </span>
                     <FlareIconButton Icon="@MaterialDesign3Icons.Regular.AccountCircle" Href="family" AriaLabel="Семья и аккаунт" />
                 </FlareStack>
             </FlareStack>
@@ -61,10 +72,12 @@ else
     protected override async Task OnInitializedAsync()
     {
         Session.Changed += OnSessionChanged;
+        NotificationCenter.Changed += OnNotificationCenterChanged;
         VersionCheck.NewVersionAvailable += OnNewVersionAsync;
         _isMobile = (await Viewport.GetBreakpointAsync()).IsAtMost(Breakpoint.Sm);
         await Session.EnsureLoadedAsync();
         Guard();
+        await SyncNotificationsAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -80,11 +93,20 @@ else
         else if (Session.Family is null) Nav.NavigateTo("start");
     }
 
-    private void OnSessionChanged() => InvokeAsync(() =>
+    private void OnSessionChanged() => _ = InvokeAsync(async () =>
     {
         Guard();
+        await SyncNotificationsAsync();
         StateHasChanged();
     });
+
+    private void OnNotificationCenterChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private async Task SyncNotificationsAsync()
+    {
+        if (Session.Family is null) await NotificationCenter.StopAsync();
+        else await NotificationCenter.StartAsync(Session.Family.FamilyId);
+    }
 
     private Task OnBreakpointAsync(Breakpoint breakpoint)
     {
@@ -104,7 +126,9 @@ else
     public async ValueTask DisposeAsync()
     {
         Session.Changed -= OnSessionChanged;
+        NotificationCenter.Changed -= OnNotificationCenterChanged;
         VersionCheck.NewVersionAvailable -= OnNewVersionAsync;
+        await NotificationCenter.StopAsync();
         if (_breakpoints is not null) await _breakpoints.DisposeAsync();
     }
 }

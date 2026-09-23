@@ -63,3 +63,20 @@ public enum PurchaseStatus
     /// <summary>Cancelled by the parent or the child; the points were refunded.</summary>
     Cancelled = 2,
 }
+
+/// <summary>Why an application notification was created.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<NotificationKind>))]
+public enum NotificationKind
+{
+    /// <summary>A child's balance increased.</summary>
+    PointsCredited = 0,
+
+    /// <summary>A child's balance decreased.</summary>
+    PointsDebited = 1,
+
+    /// <summary>A parent approved the child's submission.</summary>
+    SubmissionApproved = 2,
+
+    /// <summary>A parent rejected the child's submission.</summary>
+    SubmissionRejected = 3,
+}

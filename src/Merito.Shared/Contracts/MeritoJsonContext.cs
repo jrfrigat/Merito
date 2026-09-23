@@ -45,6 +45,9 @@ namespace Merito.Shared.Contracts;
 [JsonSerializable(typeof(PurchaseRequest))]
 [JsonSerializable(typeof(List<PurchaseDto>))]
 [JsonSerializable(typeof(PurchaseDto))]
+[JsonSerializable(typeof(List<NotificationDto>))]
+[JsonSerializable(typeof(NotificationDto))]
+[JsonSerializable(typeof(UnreadCountDto))]
 [JsonSerializable(typeof(ProblemMessage))]
 [JsonSerializable(typeof(StoredTokens))]
 public sealed partial class MeritoJsonContext : JsonSerializerContext;

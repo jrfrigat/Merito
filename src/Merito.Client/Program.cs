@@ -31,5 +31,6 @@ builder.Services.AddScoped(sp => new AuthHandler(sp.GetRequiredService<TokenStor
 });
 builder.Services.AddScoped(sp => new ApiClient(new HttpClient(sp.GetRequiredService<AuthHandler>()) { BaseAddress = baseAddress }));
 builder.Services.AddScoped<Session>();
+builder.Services.AddScoped<NotificationCenter>();
 
 await builder.Build().RunAsync();

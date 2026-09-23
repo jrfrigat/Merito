@@ -40,7 +40,7 @@ public sealed class PointsService(MeritoDbContext db, FamilyAccess access, Ledge
         var (kind, title) = request.Amount > 0
             ? (TransactionKind.Bonus, "Бонус от родителя")
             : (TransactionKind.Deduction, "Списание родителем");
-        ledger.Post(child, request.Amount, kind, title, comment, parent);
+        await ledger.PostAsync(child, request.Amount, kind, title, comment, parent, ct: ct);
         await db.SaveChangesAsync(ct);
         return child.Balance;
     }
@@ -54,7 +54,8 @@ public sealed class PointsService(MeritoDbContext db, FamilyAccess access, Ledge
             ?? throw DomainException.NotFound("Штраф не найден.");
         var child = await access.RequireChildAsync(parent.FamilyId, request.ChildId, ct);
 
-        ledger.Post(child, -penalty.Points, TransactionKind.Penalty, penalty.Title, comment, parent, penaltyId: penalty.Id);
+        await ledger.PostAsync(child, -penalty.Points, TransactionKind.Penalty, penalty.Title, comment, parent,
+            penaltyId: penalty.Id, ct: ct);
         await db.SaveChangesAsync(ct);
         return child.Balance;
     }
