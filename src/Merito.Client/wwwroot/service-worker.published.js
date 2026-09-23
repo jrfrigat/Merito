@@ -2,6 +2,7 @@
 // network, and navigation requests are answered with the cached index.html.
 
 self.importScripts('./service-worker-assets.js');
+self.importScripts('./service-worker-notifications.js');
 self.addEventListener('install', event => event.waitUntil(onInstall(event)));
 self.addEventListener('activate', event => event.waitUntil(onActivate(event)));
 self.addEventListener('fetch', event => event.respondWith(onFetch(event)));
