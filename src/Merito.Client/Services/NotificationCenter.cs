@@ -1,23 +1,23 @@
+using System.Text.Json;
 using Merito.Shared.Contracts;
 using Microsoft.JSInterop;
 
 namespace Merito.Client.Services;
 
-/// <summary>Keeps the in-app unread count current and mirrors new events to browser notifications.</summary>
+/// <summary>Keeps the unread count current and manages this browser's Web Push subscription.</summary>
 public sealed class NotificationCenter(ApiClient api, IJSRuntime js) : IAsyncDisposable
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
 
-    private readonly HashSet<Guid> _seenIds = [];
     private CancellationTokenSource? _loopCts;
     private Task? _loopTask;
     private Guid? _familyId;
-    private bool _hasBaseline;
 
     public event Action? Changed;
 
     public int UnreadCount { get; private set; }
-    public string BrowserPermission { get; private set; } = "unknown";
+    public string PushState { get; private set; } = "loading";
+    public string? PushError { get; private set; }
 
     public async Task StartAsync(Guid familyId)
     {
@@ -25,10 +25,8 @@ public sealed class NotificationCenter(ApiClient api, IJSRuntime js) : IAsyncDis
 
         await StopAsync();
         _familyId = familyId;
-        _seenIds.Clear();
-        _hasBaseline = false;
         SetUnreadCount(0);
-        await RefreshPermissionAsync();
+        await RefreshPushStateAsync();
 
         var cts = new CancellationTokenSource();
         _loopCts = cts;
@@ -55,9 +53,8 @@ public sealed class NotificationCenter(ApiClient api, IJSRuntime js) : IAsyncDis
             cts.Dispose();
         }
 
-        _seenIds.Clear();
-        _hasBaseline = false;
         SetUnreadCount(0);
+        SetPushState("loading");
     }
 
     public async Task RefreshAsync()
@@ -66,19 +63,9 @@ public sealed class NotificationCenter(ApiClient api, IJSRuntime js) : IAsyncDis
 
         try
         {
-            var notifications = await api.GetNotificationsAsync(familyId);
             var count = await api.GetUnreadNotificationCountAsync(familyId);
             if (_familyId != familyId) return;
             SetUnreadCount(count.Count);
-
-            if (_hasBaseline)
-            {
-                foreach (var item in notifications.Where(x => x.ReadAt is null && !_seenIds.Contains(x.Id)).Reverse())
-                    await ShowBrowserNotificationAsync(item);
-            }
-
-            foreach (var item in notifications) _seenIds.Add(item.Id);
-            _hasBaseline = true;
         }
         catch (ApiException)
         {
@@ -86,19 +73,121 @@ public sealed class NotificationCenter(ApiClient api, IJSRuntime js) : IAsyncDis
         }
     }
 
-    public async Task<string> EnableBrowserNotificationsAsync()
+    public async Task RefreshPushStateAsync()
     {
+        if (_familyId is not { } familyId) return;
+
         try
         {
-            BrowserPermission = await js.InvokeAsync<string>("meritoNotifications.requestPermission");
+            SetPushState("loading");
+            var configuration = await api.GetWebPushPublicKeyAsync(familyId);
+            if (_familyId != familyId) return;
+            if (string.IsNullOrWhiteSpace(configuration.PublicKey))
+            {
+                SetPushState("unavailable");
+                return;
+            }
+
+            var state = await js.InvokeAsync<string>("meritoNotifications.getState");
+            if (_familyId != familyId) return;
+            if (state == "enabled")
+            {
+                var request = await ReadSubscriptionAsync();
+                if (request is null)
+                {
+                    SetPushState("disabled");
+                    return;
+                }
+
+                await api.SubscribeWebPushAsync(familyId, request);
+            }
+
+            SetPushState(NormalizeState(state));
         }
         catch (JSException)
         {
-            BrowserPermission = "unsupported";
+            SetPushState("unsupported");
         }
+        catch (ApiException e)
+        {
+            SetPushState("error", e.Message);
+        }
+        catch (JsonException)
+        {
+            SetPushState("error", "Браузер вернул некорректные данные подписки.");
+        }
+    }
 
-        Changed?.Invoke();
-        return BrowserPermission;
+    public async Task EnablePushAsync()
+    {
+        if (_familyId is not { } familyId) return;
+
+        try
+        {
+            SetPushState("loading");
+            var configuration = await api.GetWebPushPublicKeyAsync(familyId);
+            if (_familyId != familyId) return;
+            if (string.IsNullOrWhiteSpace(configuration.PublicKey))
+            {
+                SetPushState("unavailable");
+                return;
+            }
+
+            var json = await js.InvokeAsync<string>("meritoNotifications.subscribe", configuration.PublicKey);
+            if (_familyId != familyId) return;
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                SetPushState(NormalizeState(await js.InvokeAsync<string>("meritoNotifications.getState")));
+                return;
+            }
+
+            var request = DeserializeSubscription(json);
+            await api.SubscribeWebPushAsync(familyId, request);
+            if (_familyId != familyId) return;
+            SetPushState("enabled");
+        }
+        catch (JSException)
+        {
+            SetPushState("unsupported");
+        }
+        catch (ApiException e)
+        {
+            SetPushState("error", e.Message);
+        }
+        catch (JsonException)
+        {
+            SetPushState("error", "Браузер вернул некорректные данные подписки.");
+        }
+    }
+
+    public async Task DisablePushAsync()
+    {
+        if (_familyId is not { } familyId) return;
+
+        try
+        {
+            SetPushState("loading");
+            var request = await ReadSubscriptionAsync();
+            if (_familyId != familyId) return;
+            if (request is not null)
+                await api.UnsubscribeWebPushAsync(familyId, new WebPushUnsubscribeRequest(request.Endpoint));
+
+            if (_familyId != familyId) return;
+            await js.InvokeAsync<bool>("meritoNotifications.unsubscribe");
+            SetPushState("disabled");
+        }
+        catch (JSException)
+        {
+            SetPushState("unsupported");
+        }
+        catch (ApiException e)
+        {
+            SetPushState("error", e.Message);
+        }
+        catch (JsonException)
+        {
+            SetPushState("error", "Браузер вернул некорректные данные подписки.");
+        }
     }
 
     private async Task PollAsync(Guid familyId, CancellationToken cancellationToken)
@@ -111,32 +200,30 @@ public sealed class NotificationCenter(ApiClient api, IJSRuntime js) : IAsyncDis
         }
     }
 
-    private async Task RefreshPermissionAsync()
+    private async Task<WebPushSubscriptionRequest?> ReadSubscriptionAsync()
     {
-        try
-        {
-            BrowserPermission = await js.InvokeAsync<string>("meritoNotifications.getPermission");
-        }
-        catch (JSException)
-        {
-            BrowserPermission = "unsupported";
-        }
-        Changed?.Invoke();
+        var json = await js.InvokeAsync<string>("meritoNotifications.getSubscription");
+        return string.IsNullOrWhiteSpace(json) ? null : DeserializeSubscription(json);
     }
 
-    private async Task ShowBrowserNotificationAsync(NotificationDto item)
-    {
-        if (BrowserPermission != "granted") return;
+    private static WebPushSubscriptionRequest DeserializeSubscription(string json) =>
+        JsonSerializer.Deserialize(json, MeritoJsonContext.Default.WebPushSubscriptionRequest)
+        ?? throw new JsonException("Empty Web Push subscription.");
 
-        try
-        {
-            await js.InvokeVoidAsync("meritoNotifications.show", item.Title, item.Message);
-        }
-        catch (JSException)
-        {
-            BrowserPermission = "unsupported";
-            Changed?.Invoke();
-        }
+    private static string NormalizeState(string state) => state switch
+    {
+        "enabled" => "enabled",
+        "denied" => "denied",
+        "unsupported" => "unsupported",
+        _ => "disabled",
+    };
+
+    private void SetPushState(string state, string? error = null)
+    {
+        if (PushState == state && PushError == error) return;
+        PushState = state;
+        PushError = error;
+        Changed?.Invoke();
     }
 
     private void SetUnreadCount(int count)

@@ -8,13 +8,6 @@
 <FlareStack Gap="FlareSpacing.Large">
     <PageHeader Title="Уведомления" Subtitle="События по баллам и проверке дел">
         <Actions>
-            @if (NotificationCenter.BrowserPermission is "default" or "unknown")
-            {
-                <FlareButton Variant="ButtonVariant.Tonal" Loading="_enablingBrowser" OnClick="EnableBrowserAsync">
-                    <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.NotificationsActive" /></LeadingIcon>
-                    <ChildContent>Включить системные</ChildContent>
-                </FlareButton>
-            }
             @if (_items?.Any(x => x.ReadAt is null) == true)
             {
                 <FlareButton Variant="ButtonVariant.Text" Loading="_markingAll" OnClick="MarkAllReadAsync">
@@ -25,18 +18,30 @@
         </Actions>
     </PageHeader>
 
-    @if (NotificationCenter.BrowserPermission == "granted")
-    {
-        <FlareAlert Severity="AlertSeverity.Success" Variant="AlertVariant.Outlined">
-            Системные уведомления включены для этого браузера.
-        </FlareAlert>
-    }
-    else if (NotificationCenter.BrowserPermission == "denied")
-    {
-        <FlareAlert Severity="AlertSeverity.Warning" Variant="AlertVariant.Outlined">
-            Системные уведомления запрещены в настройках браузера. Внутри приложения они продолжат работать.
-        </FlareAlert>
-    }
+    <FlareAlert Severity="@PushSeverity" Variant="AlertVariant.Outlined" Title="@PushTitle">
+        <FlareStack Gap="FlareSpacing.Small" Align="FlareAlignItems.Start">
+            <FlareText Typo="TypographyScale.BodyMedium">@PushDescription</FlareText>
+            @if (NotificationCenter.PushState == "disabled")
+            {
+                <FlareButton Variant="ButtonVariant.Tonal" Size="ButtonSize.Sm" Loading="_changingPush" OnClick="EnablePushAsync">
+                    <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.NotificationsActive" /></LeadingIcon>
+                    <ChildContent>Включить уведомления</ChildContent>
+                </FlareButton>
+            }
+            else if (NotificationCenter.PushState == "error")
+            {
+                <FlareButton Variant="ButtonVariant.Tonal" Size="ButtonSize.Sm" Loading="_changingPush" OnClick="RetryPushAsync">
+                    Попробовать снова
+                </FlareButton>
+            }
+            else if (NotificationCenter.PushState == "enabled")
+            {
+                <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Loading="_changingPush" OnClick="DisablePushAsync">
+                    Отключить для этого браузера
+                </FlareButton>
+            }
+        </FlareStack>
+    </FlareAlert>
 
     <LoadState Loading="_items is null" Error="@_error" OnRetry="LoadAsync">
         @if (_items is { Count: 0 })
@@ -90,7 +95,7 @@
     private string? _error;
     private Guid? _marking;
     private bool _markingAll;
-    private bool _enablingBrowser;
+    private bool _changingPush;
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
@@ -151,19 +156,77 @@
         }
     }
 
-    private async Task EnableBrowserAsync()
+    private async Task EnablePushAsync()
     {
-        if (_enablingBrowser) return;
-        _enablingBrowser = true;
+        if (_changingPush) return;
+        _changingPush = true;
         try
         {
-            await NotificationCenter.EnableBrowserNotificationsAsync();
+            await NotificationCenter.EnablePushAsync();
         }
         finally
         {
-            _enablingBrowser = false;
+            _changingPush = false;
         }
     }
+
+    private async Task DisablePushAsync()
+    {
+        if (_changingPush) return;
+        _changingPush = true;
+        try
+        {
+            await NotificationCenter.DisablePushAsync();
+        }
+        finally
+        {
+            _changingPush = false;
+        }
+    }
+
+    private async Task RetryPushAsync()
+    {
+        if (_changingPush) return;
+        _changingPush = true;
+        try
+        {
+            await NotificationCenter.RefreshPushStateAsync();
+        }
+        finally
+        {
+            _changingPush = false;
+        }
+    }
+
+    private AlertSeverity PushSeverity => NotificationCenter.PushState switch
+    {
+        "enabled" => AlertSeverity.Success,
+        "denied" or "unsupported" => AlertSeverity.Warning,
+        "error" => AlertSeverity.Error,
+        _ => AlertSeverity.Info,
+    };
+
+    private string PushTitle => NotificationCenter.PushState switch
+    {
+        "loading" => "Проверяем уведомления",
+        "unavailable" => "Web Push пока не настроен",
+        "unsupported" => "Браузер не поддерживает Web Push",
+        "denied" => "Уведомления запрещены в браузере",
+        "enabled" => "Уведомления включены",
+        "error" => "Не получилось настроить уведомления",
+        _ => "Получайте уведомления сразу",
+    };
+
+    private string PushDescription => NotificationCenter.PushState switch
+    {
+        "loading" => "Проверяем настройки этого браузера.",
+        "unavailable" => "Администратору нужно добавить VAPID-ключи на сервере. Уведомления внутри приложения продолжают работать.",
+        "unsupported" => "Используйте современный браузер с поддержкой service worker и Push API.",
+        "denied" => "Разрешите уведомления в настройках браузера, затем перезагрузите страницу.",
+        "enabled" => "Этот браузер сообщит о новых начислениях, списаниях и результатах проверки.",
+        "error" => NotificationCenter.PushError ?? "Повторите попытку чуть позже.",
+        _ => "Разрешение браузера появится только после нажатия кнопки.",
+    };
 
     private void Replace(NotificationDto replacement)
     {
