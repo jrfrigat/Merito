@@ -7,13 +7,27 @@ namespace Merito.Shared.Contracts;
 /// <param name="Message">Human-readable details.</param>
 /// <param name="CreatedAt">UTC moment when the notification was created.</param>
 /// <param name="ReadAt">UTC moment when it was read; null while unread.</param>
+/// <param name="Purchase">Current purchase state when this notification can resolve a purchase.</param>
 public sealed record NotificationDto(
     Guid Id,
     NotificationKind Kind,
     string Title,
     string Message,
     DateTime CreatedAt,
-    DateTime? ReadAt);
+    DateTime? ReadAt,
+    NotificationPurchaseDto? Purchase);
+
+/// <summary>A purchase linked to an actionable notification.</summary>
+public sealed record NotificationPurchaseDto(
+    Guid Id,
+    string ChildName,
+    string Title,
+    int Cost,
+    PurchaseStatus Status,
+    DateTime? ResolvedAt,
+    string? ResolverName,
+    bool CanFulfill,
+    bool CanCancel);
 
 /// <summary>Number of unread notifications for the current family member.</summary>
 /// <param name="Count">Unread notification count.</param>

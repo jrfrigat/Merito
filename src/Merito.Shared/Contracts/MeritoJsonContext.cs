@@ -47,6 +47,7 @@ namespace Merito.Shared.Contracts;
 [JsonSerializable(typeof(PurchaseDto))]
 [JsonSerializable(typeof(List<NotificationDto>))]
 [JsonSerializable(typeof(NotificationDto))]
+[JsonSerializable(typeof(NotificationPurchaseDto))]
 [JsonSerializable(typeof(UnreadCountDto))]
 [JsonSerializable(typeof(WebPushPublicKeyDto))]
 [JsonSerializable(typeof(WebPushSubscriptionRequest))]

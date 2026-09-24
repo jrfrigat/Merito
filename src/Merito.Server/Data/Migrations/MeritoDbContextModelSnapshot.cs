@@ -47,6 +47,9 @@ namespace Merito.Server.Data.Migrations
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("PurchaseId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("RecipientMemberId")
                         .HasColumnType("uuid");
 
@@ -58,6 +61,8 @@ namespace Merito.Server.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("FamilyId");
+
+                    b.HasIndex("PurchaseId");
 
                     b.HasIndex("RecipientMemberId", "CreatedAt");
 
@@ -764,7 +769,14 @@ namespace Merito.Server.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Merito.Server.Data.Purchase", "Purchase")
+                        .WithMany()
+                        .HasForeignKey("PurchaseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Family");
+
+                    b.Navigation("Purchase");
 
                     b.Navigation("Recipient");
                 });

@@ -1,5 +1,7 @@
 using Merito.Server.Features.Families;
 using Merito.Server.Infrastructure;
+using Merito.Server.Features.Shop;
+using Merito.Shared;
 using Merito.Shared.Contracts;
 using Microsoft.Extensions.Options;
 
@@ -22,6 +24,22 @@ public static class NotificationEndpoints
         family.MapPost("/{id:guid}/read", async (Guid familyId, Guid id, HttpContext http, FamilyAccess access, NotificationService service, CancellationToken ct) =>
         {
             await service.MarkReadAsync(await access.RequireAsync(familyId, http.User.GetUserId(), ct: ct), id, ct);
+            return Results.NoContent();
+        });
+
+        family.MapPost("/{id:guid}/purchase/fulfill", async (Guid familyId, Guid id, HttpContext http,
+            FamilyAccess access, ShopService service, CancellationToken ct) =>
+        {
+            await service.FulfillFromNotificationAsync(
+                await access.RequireAsync(familyId, http.User.GetUserId(), FamilyRole.Parent, ct), id, ct);
+            return Results.NoContent();
+        });
+
+        family.MapPost("/{id:guid}/purchase/cancel", async (Guid familyId, Guid id, HttpContext http,
+            FamilyAccess access, ShopService service, CancellationToken ct) =>
+        {
+            await service.CancelFromNotificationAsync(
+                await access.RequireAsync(familyId, http.User.GetUserId(), FamilyRole.Parent, ct), id, ct);
             return Results.NoContent();
         });
 

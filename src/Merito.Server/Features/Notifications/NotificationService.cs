@@ -13,13 +13,27 @@ public sealed class NotificationService(MeritoDbContext db, TimeProvider clock)
     public const int MaxTake = 200;
 
     /// <summary>Returns the recipient's notifications, newest first.</summary>
-    public async Task<IReadOnlyList<NotificationDto>> ListAsync(FamilyMember recipient, int take, CancellationToken ct = default) =>
-        await db.Notifications.AsNoTracking()
+    public async Task<IReadOnlyList<NotificationDto>> ListAsync(FamilyMember recipient, int take, CancellationToken ct = default)
+    {
+        var canResolvePurchases = recipient.Role == FamilyRole.Parent;
+        return await db.Notifications.AsNoTracking()
             .Where(n => n.RecipientMemberId == recipient.Id)
             .OrderByDescending(n => n.CreatedAt)
             .Take(Math.Clamp(take, 1, MaxTake))
-            .Select(n => new NotificationDto(n.Id, n.Kind, n.Title, n.Message, n.CreatedAt, n.ReadAt))
+            .Select(n => new NotificationDto(
+                n.Id, n.Kind, n.Title, n.Message, n.CreatedAt, n.ReadAt,
+                n.Purchase == null ? null : new NotificationPurchaseDto(
+                    n.Purchase.Id,
+                    n.Purchase.ChildMember.User.DisplayName,
+                    n.Purchase.Title,
+                    n.Purchase.Cost,
+                    n.Purchase.Status,
+                    n.Purchase.ResolvedAt,
+                    n.Purchase.ResolvedBy == null ? null : n.Purchase.ResolvedBy.User.DisplayName,
+                    canResolvePurchases && n.Purchase.Status == PurchaseStatus.Pending,
+                    canResolvePurchases && n.Purchase.Status == PurchaseStatus.Pending)))
             .ToListAsync(ct);
+    }
 
     /// <summary>Returns the recipient's unread notification count.</summary>
     public Task<int> CountUnreadAsync(FamilyMember recipient, CancellationToken ct = default) =>
@@ -66,7 +80,8 @@ public sealed class NotificationService(MeritoDbContext db, TimeProvider clock)
     }
 
     /// <summary>Stages the same notification for every active parent in a family.</summary>
-    public async Task AddForParentsAsync(Guid familyId, NotificationKind kind, string title, string message, CancellationToken ct = default)
+    public async Task AddForParentsAsync(Guid familyId, NotificationKind kind, string title, string message,
+        Guid? purchaseId = null, CancellationToken ct = default)
     {
         var parents = await db.Members
             .Where(m => m.FamilyId == familyId && m.IsActive && m.Role == FamilyRole.Parent)
@@ -79,12 +94,13 @@ public sealed class NotificationService(MeritoDbContext db, TimeProvider clock)
 
         foreach (var parent in parents)
         {
-            var notification = Create(parent, kind, title, message);
+            var notification = Create(parent, kind, title, message, purchaseId);
             AddDeliveries(notification, subscriptions.Where(s => s.MemberId == parent.Id).Select(s => s.Id));
         }
     }
 
-    private AppNotification Create(FamilyMember recipient, NotificationKind kind, string title, string message)
+    private AppNotification Create(FamilyMember recipient, NotificationKind kind, string title, string message,
+        Guid? purchaseId = null)
     {
         var notification = new AppNotification
         {
@@ -95,6 +111,7 @@ public sealed class NotificationService(MeritoDbContext db, TimeProvider clock)
             Title = title,
             Message = message,
             CreatedAt = clock.GetUtcNow().UtcDateTime,
+            PurchaseId = purchaseId,
         };
         db.Notifications.Add(notification);
         return notification;

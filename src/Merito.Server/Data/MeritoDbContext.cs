@@ -148,11 +148,13 @@ public sealed class MeritoDbContext(DbContextOptions<MeritoDbContext> options)
         builder.Entity<AppNotification>(e =>
         {
             e.HasIndex(n => new { n.RecipientMemberId, n.CreatedAt });
+            e.HasIndex(n => n.PurchaseId);
             e.Property(n => n.Kind).HasConversion<string>().HasMaxLength(32);
             e.Property(n => n.Title).HasMaxLength(Limits.TitleMaxLength);
             e.Property(n => n.Message).HasMaxLength(Limits.TextMaxLength);
             e.HasOne(n => n.Family).WithMany().HasForeignKey(n => n.FamilyId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(n => n.Recipient).WithMany().HasForeignKey(n => n.RecipientMemberId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(n => n.Purchase).WithMany().HasForeignKey(n => n.PurchaseId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<WebPushSubscription>(e =>

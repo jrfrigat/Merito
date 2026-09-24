@@ -113,6 +113,53 @@ public sealed class NotificationTests
     }
 
     [Fact]
+    public async Task Purchase_notification_exposes_current_state_and_cancel_is_idempotent()
+    {
+        await using var t = await TestDb.CreateAsync();
+        var (parent, child) = await t.AddFamilyAsync(seedExample: true);
+        await t.Points.AdjustAsync(parent, new(child.Id, 10, "Старт"));
+        var reward = (await t.Catalog.GetRewardsAsync(child.FamilyId)).First(r => r.Cost == 8);
+
+        var purchase = await t.Shop.BuyAsync(child, new(reward.Id));
+        var item = (await t.Notifications.ListAsync(parent, 50)).Single(n => n.Purchase?.Id == purchase.Id);
+
+        Assert.NotNull(item.Purchase);
+        Assert.Equal(child.User.DisplayName, item.Purchase.ChildName);
+        Assert.Equal(reward.Title, item.Purchase.Title);
+        Assert.Equal(8, item.Purchase.Cost);
+        Assert.True(item.Purchase.CanFulfill);
+        Assert.True(item.Purchase.CanCancel);
+
+        await t.Shop.CancelFromNotificationAsync(parent, item.Id);
+        await t.Shop.CancelFromNotificationAsync(parent, item.Id);
+
+        var resolved = (await t.Notifications.ListAsync(parent, 50)).Single(n => n.Id == item.Id);
+        Assert.Equal(PurchaseStatus.Cancelled, resolved.Purchase!.Status);
+        Assert.False(resolved.Purchase.CanFulfill);
+        Assert.False(resolved.Purchase.CanCancel);
+        Assert.NotNull(resolved.ReadAt);
+        Assert.Equal(10, child.Balance);
+        Assert.Single(await t.Db.Transactions.Where(x => x.PurchaseId == purchase.Id && x.Kind == TransactionKind.Refund).ToListAsync());
+
+        var conflict = await Assert.ThrowsAsync<DomainException>(() =>
+            t.Shop.FulfillFromNotificationAsync(parent, item.Id));
+        Assert.Equal(DomainError.Conflict, conflict.Error);
+    }
+
+    [Fact]
+    public async Task Purchase_action_rejects_another_recipients_or_passive_notification()
+    {
+        await using var t = await TestDb.CreateAsync();
+        var (parent, child) = await t.AddFamilyAsync();
+        var passive = await t.Notifications.AddAsync(parent, NotificationKind.PointsDebited, "Списание", "-2");
+        var childNotification = await t.Notifications.AddAsync(child, NotificationKind.SubmissionApproved, "Засчитано", "Готово");
+        await t.Db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<DomainException>(() => t.Shop.FulfillFromNotificationAsync(parent, passive.Id));
+        await Assert.ThrowsAsync<DomainException>(() => t.Shop.CancelFromNotificationAsync(parent, childNotification.Id));
+    }
+
+    [Fact]
     public async Task Notification_queues_delivery_only_for_existing_subscriptions()
     {
         await using var t = await TestDb.CreateAsync();

@@ -54,7 +54,8 @@ public sealed class LedgerService(MeritoDbContext db, NotificationService notifi
         var signedAmount = amount > 0 ? $"+{amount}" : amount.ToString();
         var message = $"{child.User.DisplayName}: {signedAmount} баллов — {title}.";
         if (!string.IsNullOrWhiteSpace(comment)) message += $" {comment}";
-        await notifications.AddForParentsAsync(child.FamilyId, notificationKind, notificationTitle, message, ct);
+        await notifications.AddForParentsAsync(child.FamilyId, notificationKind, notificationTitle, message,
+            purchaseId: kind == TransactionKind.Purchase ? purchaseId : null, ct: ct);
 
         return entry;
     }

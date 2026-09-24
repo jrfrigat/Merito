@@ -29,7 +29,16 @@ public sealed class ApiTests
 
         var reward = (await kid.GetFromJsonAsync<List<RewardDto>>(root + "/rewards"))!.First(r => r.Cost <= task.Points + 10);
         var purchase = await Post<PurchaseDto>(kid, root + "/purchases", new PurchaseRequest(reward.Id));
-        await Post(parent, $"{root}/purchases/{purchase.Id}/fulfill", new { });
+        var notification = (await parent.GetFromJsonAsync<List<NotificationDto>>(root + "/notifications"))!
+            .Single(n => n.Purchase?.Id == purchase.Id);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await kid.PostAsJsonAsync($"{root}/notifications/{notification.Id}/purchase/fulfill", new { })).StatusCode);
+        await Post(parent, $"{root}/notifications/{notification.Id}/purchase/fulfill", new { });
+
+        var resolvedNotification = (await parent.GetFromJsonAsync<List<NotificationDto>>(root + "/notifications"))!
+            .Single(n => n.Id == notification.Id);
+        Assert.Equal(PurchaseStatus.Fulfilled, resolvedNotification.Purchase!.Status);
+        Assert.NotNull(resolvedNotification.ReadAt);
 
         var dashboard = await kid.GetFromJsonAsync<DashboardDto>(root + "/dashboard");
         Assert.Equal(task.Points + 10 - reward.Cost, dashboard!.Me.Balance);

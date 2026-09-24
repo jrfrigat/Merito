@@ -35,6 +35,12 @@ public sealed class AppNotification
     /// <summary>UTC moment when the recipient read the notification.</summary>
     public DateTime? ReadAt { get; set; }
 
+    /// <summary>The purchase that can be resolved from this notification.</summary>
+    public Guid? PurchaseId { get; set; }
+
+    /// <summary>The purchase that can be resolved from this notification.</summary>
+    public Purchase? Purchase { get; set; }
+
     /// <summary>Web Push delivery attempts created with this notification.</summary>
     public ICollection<WebPushDelivery> PushDeliveries { get; set; } = [];
 }

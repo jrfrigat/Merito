@@ -81,6 +81,51 @@ public sealed class ShopService(MeritoDbContext db, LedgerService ledger, TimePr
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>A parent hands over the purchase linked to their notification and reads it.</summary>
+    public Task FulfillFromNotificationAsync(FamilyMember parent, Guid notificationId, CancellationToken ct = default) =>
+        ResolveFromNotificationAsync(parent, notificationId, PurchaseStatus.Fulfilled, ct);
+
+    /// <summary>A parent cancels the purchase linked to their notification, refunds it and reads the notification.</summary>
+    public Task CancelFromNotificationAsync(FamilyMember parent, Guid notificationId, CancellationToken ct = default) =>
+        ResolveFromNotificationAsync(parent, notificationId, PurchaseStatus.Cancelled, ct);
+
+    private async Task ResolveFromNotificationAsync(
+        FamilyMember parent, Guid notificationId, PurchaseStatus targetStatus, CancellationToken ct)
+    {
+        var notification = await db.Notifications
+            .Include(n => n.Purchase!)
+            .ThenInclude(p => p.ChildMember)
+            .ThenInclude(m => m.User)
+            .FirstOrDefaultAsync(n => n.Id == notificationId
+                && n.RecipientMemberId == parent.Id
+                && n.FamilyId == parent.FamilyId
+                && n.PurchaseId != null, ct)
+            ?? throw DomainException.NotFound("Уведомление о покупке не найдено.");
+        var purchase = notification.Purchase!;
+
+        if (purchase.Status != PurchaseStatus.Pending)
+        {
+            if (purchase.Status != targetStatus)
+                throw DomainException.Conflict("По этой покупке уже принято другое решение.");
+
+            if (notification.ReadAt is null)
+            {
+                notification.ReadAt = clock.GetUtcNow().UtcDateTime;
+                await db.SaveChangesAsync(ct);
+            }
+            return;
+        }
+
+        Resolve(purchase, targetStatus, parent);
+        if (targetStatus == PurchaseStatus.Cancelled)
+        {
+            await ledger.PostAsync(purchase.ChildMember, purchase.Cost, TransactionKind.Refund,
+                purchase.Title, null, parent, purchaseId: purchase.Id, ct: ct);
+        }
+        notification.ReadAt = clock.GetUtcNow().UtcDateTime;
+        await db.SaveChangesAsync(ct);
+    }
+
     private void Resolve(Purchase purchase, PurchaseStatus status, FamilyMember by)
     {
         purchase.Status = status;
