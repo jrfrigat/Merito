@@ -81,6 +81,38 @@ The first account you register is a parent account; create the family, then add 
 | `POSTGRES_PASSWORD` | - (required) | Database password used by both containers |
 | `POSTGRES_DB` | `merito` | Database name |
 | `POSTGRES_USER` | `merito` | Database user |
+| `WebPush__PublicKey` | empty | Public VAPID key sent to browsers when they subscribe |
+| `WebPush__PrivateKey` | empty | Private VAPID key used only by the server |
+| `WebPush__Subject` | empty | Contact URI for VAPID claims (`mailto:` or `https:`) |
+
+### Web Push
+
+Web Push is optional. If its three variables are empty, Merito starts normally and keeps browser push
+disabled. To enable it, generate one VAPID key pair and keep using that pair for this installation.
+With Node.js and `npx` installed, run:
+
+```bash
+npx --yes web-push generate-vapid-keys --json
+```
+
+If you only have Docker, run the same generator in a temporary container:
+
+```bash
+docker run --rm node:lts-alpine npx --yes web-push generate-vapid-keys --json
+```
+
+Copy the generated values to `.env` and set a contact URI owned by the server operator:
+
+```dotenv
+WebPush__PublicKey=<publicKey>
+WebPush__PrivateKey=<privateKey>
+WebPush__Subject=mailto:admin@example.com
+```
+
+`WebPush__Subject` may be a `mailto:` address or an `https:` URL. The public key is intentionally sent
+to browsers. The private key must remain secret: keep it only in `.env` or a production secret store,
+and never commit it. Generate the pair only once; replacing it makes existing browser subscriptions
+unusable, so users must subscribe again.
 
 Serve the app over HTTPS in production (the reverse proxy is the natural place): sign-in tokens travel
 in request headers, and browsers install PWAs only from secure origins.

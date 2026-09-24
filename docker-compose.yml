@@ -32,6 +32,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Merito: "Host=merito-db;Port=5432;Database=${POSTGRES_DB:-merito};Username=${POSTGRES_USER:-merito};Password=${POSTGRES_PASSWORD}"
+      WebPush__PublicKey: ${WebPush__PublicKey:-}
+      WebPush__PrivateKey: ${WebPush__PrivateKey:-}
+      WebPush__Subject: ${WebPush__Subject:-}
     networks:
       - proxy_network
       - merito_network
