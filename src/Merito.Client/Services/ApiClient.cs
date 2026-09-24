@@ -79,6 +79,10 @@ public sealed class ApiClient(HttpClient http)
         SendEmpty(HttpMethod.Post, $"api/families/{f}/notifications/{id}/read");
     public Task MarkAllNotificationsReadAsync(Guid f) =>
         SendEmpty(HttpMethod.Post, $"api/families/{f}/notifications/read-all");
+    public Task FulfillNotificationPurchaseAsync(Guid f, Guid id) =>
+        SendEmpty(HttpMethod.Post, $"api/families/{f}/notifications/{id}/purchase/fulfill");
+    public Task CancelNotificationPurchaseAsync(Guid f, Guid id) =>
+        SendEmpty(HttpMethod.Post, $"api/families/{f}/notifications/{id}/purchase/cancel");
     public Task<WebPushPublicKeyDto> GetWebPushPublicKeyAsync(Guid f) =>
         Get($"api/families/{f}/notifications/push/public-key", Json.WebPushPublicKeyDto);
     public Task SubscribeWebPushAsync(Guid f, WebPushSubscriptionRequest request) =>

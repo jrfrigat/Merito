@@ -2,6 +2,8 @@
 @inject ApiClient Api
 @inject Session Session
 @inject NotificationCenter NotificationCenter
+@inject IDialogService Dialogs
+@inject ISnackbarService Snackbar
 
 <PageTitle>Уведомления - Merito</PageTitle>
 
@@ -72,10 +74,35 @@
                                     </FlareStack>
                                     <FlareText Typo="TypographyScale.BodyMedium">@item.Message</FlareText>
                                     <FlareText Typo="TypographyScale.LabelSmall">@Format.When(item.CreatedAt)</FlareText>
+                                    @if (item.Purchase is { } purchase)
+                                    {
+                                        <FlareStack Gap="FlareSpacing.XSmall">
+                                            <FlareText Typo="TypographyScale.TitleSmall" Weight="FontWeight.Medium">@purchase.Title</FlareText>
+                                            <FlareText Typo="TypographyScale.BodySmall">@($"{purchase.ChildName} - {Format.Points(purchase.Cost)}")</FlareText>
+                                            <FlareStack Row>
+                                                <FlareChip Label="@PurchaseStatusLabel(purchase.Status)" Color="@PurchaseStatusColor(purchase.Status)" Size="ChipSize.Sm" />
+                                            </FlareStack>
+                                            @if (PurchaseResolution(purchase) is { } resolution)
+                                            {
+                                                <FlareText Typo="TypographyScale.LabelSmall">@resolution</FlareText>
+                                            }
+                                        </FlareStack>
+                                    }
                                 </FlareStack>
                             </FlareStack>
                         </FlareCardContent>
-                        @if (unread)
+                        @if (item.Purchase is { CanFulfill: true } or { CanCancel: true })
+                        {
+                            <FlareCardActions Align="CardActionsAlign.End" Wrap>
+                                <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Color="FlareColor.Error"
+                                             Loading="@(_acting == item.Id && _cancelling)" Disabled="@(_acting is not null || _marking is not null)"
+                                             OnClick="@(() => CancelPurchaseAsync(item))">Отменить и вернуть</FlareButton>
+                                <FlareButton Variant="ButtonVariant.Filled" Size="ButtonSize.Sm"
+                                             Loading="@(_acting == item.Id && !_cancelling)" Disabled="@(_acting is not null || _marking is not null)"
+                                             OnClick="@(() => FulfillPurchaseAsync(item))">Выдать</FlareButton>
+                            </FlareCardActions>
+                        }
+                        else if (unread)
                         {
                             <FlareCardActions Align="CardActionsAlign.End">
                                 <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm"
@@ -94,6 +121,8 @@
     private List<NotificationDto>? _items;
     private string? _error;
     private Guid? _marking;
+    private Guid? _acting;
+    private bool _cancelling;
     private bool _markingAll;
     private bool _changingPush;
 
@@ -153,6 +182,46 @@
         finally
         {
             _markingAll = false;
+        }
+    }
+
+    private Task FulfillPurchaseAsync(NotificationDto item) =>
+        RunPurchaseActionAsync(item, false,
+            () => Api.FulfillNotificationPurchaseAsync(Session.FamilyId, item.Id),
+            "Покупка отмечена как выданная");
+
+    private async Task CancelPurchaseAsync(NotificationDto item)
+    {
+        if (item.Purchase is not { } purchase ||
+            await Dialogs.ConfirmAsync("Отменить покупку?",
+                $"{Format.Points(purchase.Cost)} вернутся на счет {purchase.ChildName}.",
+                "Отменить покупку", "Нет") != true)
+            return;
+
+        await RunPurchaseActionAsync(item, true,
+            () => Api.CancelNotificationPurchaseAsync(Session.FamilyId, item.Id),
+            "Покупка отменена, баллы возвращены");
+    }
+
+    private async Task RunPurchaseActionAsync(NotificationDto item, bool cancelling, Func<Task> action, string done)
+    {
+        if (_acting is not null) return;
+        _acting = item.Id;
+        _cancelling = cancelling;
+        try
+        {
+            await action();
+            Snackbar.Show(done, SnackbarSeverity.Success);
+        }
+        catch (ApiException e)
+        {
+            Snackbar.Show(e.Message, SnackbarSeverity.Error);
+        }
+        finally
+        {
+            _acting = null;
+            _cancelling = false;
+            await LoadAsync();
         }
     }
 
@@ -250,4 +319,23 @@
         NotificationKind.PointsDebited or NotificationKind.SubmissionRejected => FlareColor.Error,
         _ => FlareColor.Primary,
     };
+
+    private static string PurchaseStatusLabel(PurchaseStatus status) => status switch
+    {
+        PurchaseStatus.Pending => "Ждет решения",
+        PurchaseStatus.Fulfilled => "Выдано",
+        PurchaseStatus.Cancelled => "Отменено",
+        _ => status.ToString(),
+    };
+
+    private static FlareColor PurchaseStatusColor(PurchaseStatus status) => status switch
+    {
+        PurchaseStatus.Fulfilled => FlareColor.Success,
+        PurchaseStatus.Cancelled => FlareColor.Error,
+        _ => FlareColor.Tertiary,
+    };
+
+    private static string? PurchaseResolution(NotificationPurchaseDto purchase) => purchase.ResolvedAt is { } resolvedAt
+        ? $"{purchase.ResolverName ?? "Родитель"} - {Format.When(resolvedAt)}"
+        : null;
 }
