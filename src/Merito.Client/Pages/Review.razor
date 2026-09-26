@@ -40,11 +40,19 @@
                                     <FlareCardContent><FlareText>"@s.ChildComment"</FlareText></FlareCardContent>
                                 }
                                 <FlareCardActions Align="CardActionsAlign.End">
-                                    <FlareButton Variant="ButtonVariant.Text" Color="FlareColor.Error" OnClick="@(() => ReviewAsync(s, approve: false))">Отклонить</FlareButton>
-                                    <FlareButton Color="FlareColor.Success" OnClick="@(() => ReviewAsync(s, approve: true))">
-                                        <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Check" /></LeadingIcon>
-                                        <ChildContent>Засчитать</ChildContent>
-                                    </FlareButton>
+                                    <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Color="FlareColor.Error" Disabled="@(_approving is not null)"
+                                                 OnClick="@(() => ReviewAsync(s, approve: false))">Отклонить</FlareButton>
+                                    @if (s.SuggestedPoints is { } points)
+                                    {
+                                        <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Edit" AriaLabel="Изменить баллы" Size="ButtonSize.Sm" Disabled="@(_approving is not null)"
+                                                         OnClick="@(() => ReviewAsync(s, approve: true))" />
+                                        <FlareButton Color="FlareColor.Success" Size="ButtonSize.Sm" Loading="@(_approving == s.Id)" Disabled="@(_approving is not null)"
+                                                     OnClick="@(() => ApproveNowAsync(s, points))">Засчитать</FlareButton>
+                                    }
+                                    else
+                                    {
+                                        <FlareButton Color="FlareColor.Success" Size="ButtonSize.Sm" OnClick="@(() => ReviewAsync(s, approve: true))">Засчитать</FlareButton>
+                                    }
                                 </FlareCardActions>
                             </FlareCard>
                         }
@@ -83,6 +91,7 @@
 @code {
     private List<SubmissionDto>? _items;
     private string? _error;
+    private Guid? _approving;
 
     protected override async Task OnInitializedAsync()
     {
@@ -99,6 +108,26 @@
         catch (ApiException e)
         {
             _error = e.Message;
+        }
+    }
+
+    private async Task ApproveNowAsync(SubmissionDto submission, int points)
+    {
+        if (_approving is not null) return;
+        _approving = submission.Id;
+        try
+        {
+            await Api.ApproveAsync(Session.FamilyId, submission.Id, new ApproveRequest(points, null, null));
+            Snackbar.Show($"{submission.ChildName}: +{Format.Points(points)}", SnackbarSeverity.Success);
+        }
+        catch (ApiException e)
+        {
+            Snackbar.Show(e.Message, SnackbarSeverity.Error);
+        }
+        finally
+        {
+            _approving = null;
+            await LoadAsync();
         }
     }
 
