@@ -1,4 +1,5 @@
 using Merito.Server.Data;
+using Merito.Server.Features.Notifications;
 using Merito.Server.Features.Points;
 using Merito.Server.Infrastructure;
 using Merito.Shared;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Merito.Server.Features.Shop;
 
 /// <summary>Children buy rewards with points paid at once; parents hand them over or cancel with a refund.</summary>
-public sealed class ShopService(MeritoDbContext db, LedgerService ledger, TimeProvider clock)
+public sealed class ShopService(MeritoDbContext db, LedgerService ledger, NotificationService notifications, TimeProvider clock)
 {
     /// <summary>The largest page a list request returns.</summary>
     public const int MaxTake = 200;
@@ -64,7 +65,7 @@ public sealed class ShopService(MeritoDbContext db, LedgerService ledger, TimePr
     public async Task FulfillAsync(FamilyMember parent, Guid purchaseId, CancellationToken ct = default)
     {
         var purchase = await FindPendingAsync(parent, purchaseId, ct);
-        Resolve(purchase, PurchaseStatus.Fulfilled, parent);
+        await ResolveAsync(purchase, PurchaseStatus.Fulfilled, parent, ct);
         await db.SaveChangesAsync(ct);
     }
 
@@ -75,7 +76,7 @@ public sealed class ShopService(MeritoDbContext db, LedgerService ledger, TimePr
         if (caller.Role == FamilyRole.Child && purchase.ChildMemberId != caller.Id)
             throw DomainException.NotFound("Покупка не найдена.");
 
-        Resolve(purchase, PurchaseStatus.Cancelled, caller);
+        await ResolveAsync(purchase, PurchaseStatus.Cancelled, caller, ct);
         await ledger.PostAsync(purchase.ChildMember, purchase.Cost, TransactionKind.Refund, purchase.Title, null, caller,
             purchaseId: purchase.Id, ct: ct);
         await db.SaveChangesAsync(ct);
@@ -116,7 +117,7 @@ public sealed class ShopService(MeritoDbContext db, LedgerService ledger, TimePr
             return;
         }
 
-        Resolve(purchase, targetStatus, parent);
+        await ResolveAsync(purchase, targetStatus, parent, ct);
         if (targetStatus == PurchaseStatus.Cancelled)
         {
             await ledger.PostAsync(purchase.ChildMember, purchase.Cost, TransactionKind.Refund,
@@ -126,12 +127,18 @@ public sealed class ShopService(MeritoDbContext db, LedgerService ledger, TimePr
         await db.SaveChangesAsync(ct);
     }
 
-    private void Resolve(Purchase purchase, PurchaseStatus status, FamilyMember by)
+    private async Task ResolveAsync(Purchase purchase, PurchaseStatus status, FamilyMember by, CancellationToken ct)
     {
         purchase.Status = status;
         purchase.ResolvedAt = clock.GetUtcNow().UtcDateTime;
         purchase.ResolvedByMemberId = by.Id;
         purchase.Version = Guid.NewGuid();
+
+        if (by.Role != FamilyRole.Parent) return;
+        var (kind, title, message) = status == PurchaseStatus.Fulfilled
+            ? (NotificationKind.PurchaseFulfilled, "Покупка выдана", $"{purchase.Title}.")
+            : (NotificationKind.PurchaseCancelled, "Покупка отменена", $"{purchase.Title}: +{purchase.Cost} баллов вернулись на счет.");
+        await notifications.AddAsync(purchase.ChildMember, kind, title, message, ct);
     }
 
     private async Task<Purchase> FindPendingAsync(FamilyMember caller, Guid purchaseId, CancellationToken ct)

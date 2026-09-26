@@ -318,12 +318,14 @@
         NotificationKind.SubmissionApproved => MaterialDesign3Icons.Regular.CheckCircle,
         NotificationKind.SubmissionRejected => MaterialDesign3Icons.Regular.Cancel,
         NotificationKind.SubmissionCreated => MaterialDesign3Icons.Regular.TaskAlt,
+        NotificationKind.PurchaseFulfilled => MaterialDesign3Icons.Regular.Redeem,
+        NotificationKind.PurchaseCancelled => MaterialDesign3Icons.Regular.Undo,
         _ => MaterialDesign3Icons.Regular.Notifications,
     };
 
     private static FlareColor Color(NotificationKind kind) => kind switch
     {
-        NotificationKind.PointsCredited or NotificationKind.SubmissionApproved => FlareColor.Success,
+        NotificationKind.PointsCredited or NotificationKind.SubmissionApproved or NotificationKind.PurchaseFulfilled => FlareColor.Success,
         NotificationKind.PointsDebited or NotificationKind.SubmissionRejected => FlareColor.Error,
         _ => FlareColor.Primary,
     };

@@ -156,7 +156,7 @@ public sealed class PointsFlowTests
 
         var otherNotifications = new Merito.Server.Features.Notifications.NotificationService(other, t.Clock);
         var otherLedger = new Merito.Server.Features.Points.LedgerService(other, otherNotifications, t.Clock);
-        var otherShop = new Merito.Server.Features.Shop.ShopService(other, otherLedger, t.Clock);
+        var otherShop = new Merito.Server.Features.Shop.ShopService(other, otherLedger, otherNotifications, t.Clock);
         await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => otherShop.BuyAsync(stale, new PurchaseRequest(reward.Id)));
     }
 

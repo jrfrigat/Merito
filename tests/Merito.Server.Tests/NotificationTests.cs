@@ -31,14 +31,51 @@ public sealed class NotificationTests
         await t.Points.AdjustAsync(parent, new(child.Id, 7, "За помощь"));
         await t.Points.AdjustAsync(parent, new(child.Id, -2, "За опоздание"));
 
-        foreach (var recipient in new[] { parent, secondParent })
+        foreach (var recipient in new[] { secondParent, child })
         {
             var items = await t.Notifications.ListAsync(recipient, 50);
             Assert.Equal(2, items.Count);
-            Assert.Contains(items, n => n.Kind == NotificationKind.PointsCredited && n.Message.Contains("+7"));
-            Assert.Contains(items, n => n.Kind == NotificationKind.PointsDebited && n.Message.Contains("-2"));
+            Assert.Contains(items, n => n.Kind == NotificationKind.PointsCredited && n.Message.Contains("+7") && n.Message.Contains("За помощь"));
+            Assert.Contains(items, n => n.Kind == NotificationKind.PointsDebited && n.Message.Contains("-2") && n.Message.Contains("За опоздание"));
         }
-        Assert.Empty(await t.Notifications.ListAsync(child, 50));
+        Assert.Empty(await t.Notifications.ListAsync(parent, 50));
+    }
+
+    [Fact]
+    public async Task Child_is_told_about_a_penalty_and_the_author_is_not()
+    {
+        await using var t = await TestDb.CreateAsync();
+        var (parent, child) = await t.AddFamilyAsync(seedExample: true);
+        var penalty = (await t.Catalog.GetPenaltiesAsync(child.FamilyId)).First();
+
+        await t.Points.ApplyPenaltyAsync(parent, new(child.Id, penalty.Id, null));
+
+        var item = Assert.Single(await t.Notifications.ListAsync(child, 50));
+        Assert.Equal(NotificationKind.PointsDebited, item.Kind);
+        Assert.Equal("Штраф", item.Title);
+        Assert.Contains(penalty.Title, item.Message);
+        Assert.Empty(await t.Notifications.ListAsync(parent, 50));
+    }
+
+    [Fact]
+    public async Task Child_is_told_when_a_parent_hands_over_or_cancels_a_purchase()
+    {
+        await using var t = await TestDb.CreateAsync();
+        var (parent, child) = await t.AddFamilyAsync(seedExample: true);
+        await t.Points.AdjustAsync(parent, new(child.Id, 30, "Старт"));
+        var reward = (await t.Catalog.GetRewardsAsync(child.FamilyId)).First(r => r.Cost == 8);
+        var handed = await t.Shop.BuyAsync(child, new(reward.Id));
+        var cancelled = await t.Shop.BuyAsync(child, new(reward.Id));
+        var own = await t.Shop.BuyAsync(child, new(reward.Id));
+
+        await t.Shop.FulfillAsync(parent, handed.Id);
+        await t.Shop.CancelAsync(parent, cancelled.Id);
+        await t.Shop.CancelAsync(child, own.Id);
+
+        var items = await t.Notifications.ListAsync(child, 50);
+        Assert.Single(items, n => n.Kind == NotificationKind.PurchaseFulfilled && n.Message.Contains(reward.Title));
+        Assert.Single(items, n => n.Kind == NotificationKind.PurchaseCancelled && n.Message.Contains("+8"));
+        Assert.DoesNotContain(items, n => n.Kind == NotificationKind.PointsCredited && n.Message.Contains(reward.Title));
     }
 
     [Fact]

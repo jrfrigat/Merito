@@ -82,4 +82,10 @@ public enum NotificationKind
 
     /// <summary>A child reported done work that waits for a parent's review.</summary>
     SubmissionCreated = 4,
+
+    /// <summary>A parent handed the child's purchase over.</summary>
+    PurchaseFulfilled = 5,
+
+    /// <summary>A parent cancelled the child's purchase and the points came back.</summary>
+    PurchaseCancelled = 6,
 }

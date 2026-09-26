@@ -79,12 +79,15 @@ public sealed class NotificationService(MeritoDbContext db, TimeProvider clock)
         return notification;
     }
 
-    /// <summary>Stages the same notification for every active parent in a family.</summary>
+    /// <summary>
+    /// Stages the same notification for every active parent in a family except <paramref name="exceptMemberId"/>,
+    /// the parent who caused the event.
+    /// </summary>
     public async Task AddForParentsAsync(Guid familyId, NotificationKind kind, string title, string message,
-        Guid? purchaseId = null, CancellationToken ct = default)
+        Guid? purchaseId = null, Guid? exceptMemberId = null, CancellationToken ct = default)
     {
         var parents = await db.Members
-            .Where(m => m.FamilyId == familyId && m.IsActive && m.Role == FamilyRole.Parent)
+            .Where(m => m.FamilyId == familyId && m.IsActive && m.Role == FamilyRole.Parent && m.Id != exceptMemberId)
             .ToListAsync(ct);
         var parentIds = parents.Select(p => p.Id).ToArray();
         var subscriptions = await db.WebPushSubscriptions

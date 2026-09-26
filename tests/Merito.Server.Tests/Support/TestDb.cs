@@ -29,7 +29,7 @@ public sealed class TestDb : IAsyncDisposable
         Catalog = new CatalogService(db, Clock);
         Submissions = new SubmissionService(db, Ledger, Notifications, Clock);
         Points = new PointsService(db, Access, Ledger);
-        Shop = new ShopService(db, Ledger, Clock);
+        Shop = new ShopService(db, Ledger, Notifications, Clock);
     }
 
     public MeritoDbContext Db { get; }
