@@ -1,7 +1,6 @@
 @inject Session Session
 
-@* Flare 0.37.0 stacks the fixed bar (z-index 1100) above the dialog scrim (1000), hiding dialog buttons. *@
-<FlareBottomNav Position="BottomNavPosition.Fixed" AriaLabel="Разделы" Style="z-index:999;">
+<FlareBottomNav Position="BottomNavPosition.Fixed" AriaLabel="Разделы">
     @foreach (var item in AppNavigation.For(Session.Family!.Role))
     {
         <FlareBottomNavItem Href="@item.Href" Match="@(item.Href == "" ? NavMatchMode.Exact : NavMatchMode.Prefix)">
