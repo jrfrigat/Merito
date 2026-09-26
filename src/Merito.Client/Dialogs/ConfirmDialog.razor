@@ -21,4 +21,8 @@
 
     /// <summary>True when the action removes or undoes something.</summary>
     [Parameter] public bool Danger { get; set; }
+
+    /// <summary>Asks whether to delete a catalog record named <paramref name="title"/>.</summary>
+    public static Task<bool> AskDeleteAsync(IDialogService dialogs, string title) =>
+        dialogs.AskAsync("Удалить?", $"\"{title}\" пропадет из каталога. История начислений сохранится.", "Удалить", danger: true);
 }

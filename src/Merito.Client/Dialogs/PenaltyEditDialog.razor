@@ -7,9 +7,16 @@
     }
     <FlareTextField @bind-Value="_title" Label="Нарушение" MaxLength="Limits.TitleMaxLength" Required Autofocus />
     <FlareNumericField TValue="int" @bind-Value="_points" Label="Сколько баллов списать" Min="1" Max="Limits.PointsMax" SelectAllOnFocus />
-    <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
-        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
-        <FlareButton Loading="Busy" OnClick="SaveAsync">Сохранить</FlareButton>
+    <FlareStack Row Align="FlareAlignItems.Center" Justify="@(Penalty is null ? FlareJustifyContent.End : FlareJustifyContent.SpaceBetween)" Gap="FlareSpacing.Small">
+        @if (Penalty is not null)
+        {
+            <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Delete" AriaLabel="Удалить штраф" Color="FlareColor.Error" Disabled="Busy"
+                             OnClick="@(() => DeleteAsync(Penalty.Title, () => Api.DeletePenaltyAsync(Session.FamilyId, Penalty.Id)))" />
+        }
+        <FlareStack Row Gap="FlareSpacing.Small">
+            <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+            <FlareButton Loading="Busy" OnClick="SaveAsync">Сохранить</FlareButton>
+        </FlareStack>
     </FlareStack>
 </FlareStack>
 

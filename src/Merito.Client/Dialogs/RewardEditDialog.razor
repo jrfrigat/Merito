@@ -8,9 +8,16 @@
     <FlareTextField @bind-Value="_title" Label="Награда" MaxLength="Limits.TitleMaxLength" Required Autofocus />
     <FlareNumericField TValue="int" @bind-Value="_cost" Label="Цена в баллах" Min="1" Max="Limits.PointsMax" SelectAllOnFocus />
     <FlareTextArea @bind-Value="_description" Label="Описание и условия" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength" />
-    <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
-        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
-        <FlareButton Loading="Busy" OnClick="SaveAsync">Сохранить</FlareButton>
+    <FlareStack Row Align="FlareAlignItems.Center" Justify="@(Reward is null ? FlareJustifyContent.End : FlareJustifyContent.SpaceBetween)" Gap="FlareSpacing.Small">
+        @if (Reward is not null)
+        {
+            <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Delete" AriaLabel="Удалить награду" Color="FlareColor.Error" Disabled="Busy"
+                             OnClick="@(() => DeleteAsync(Reward.Title, () => Api.DeleteRewardAsync(Session.FamilyId, Reward.Id)))" />
+        }
+        <FlareStack Row Gap="FlareSpacing.Small">
+            <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+            <FlareButton Loading="Busy" OnClick="SaveAsync">Сохранить</FlareButton>
+        </FlareStack>
     </FlareStack>
 </FlareStack>
 

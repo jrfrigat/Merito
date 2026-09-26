@@ -16,9 +16,16 @@
     </FlareStack>
     <FlareTextField @bind-Value="_timeOfDay" Label="Когда" Placeholder="утро, вечер, весь день" MaxLength="Limits.TimeOfDayMaxLength" />
     <FlareTextArea @bind-Value="_description" Label="Подробности" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength" />
-    <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
-        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
-        <FlareButton Loading="Busy" OnClick="SaveAsync">Сохранить</FlareButton>
+    <FlareStack Row Align="FlareAlignItems.Center" Justify="@(Task is null ? FlareJustifyContent.End : FlareJustifyContent.SpaceBetween)" Gap="FlareSpacing.Small">
+        @if (Task is not null)
+        {
+            <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Delete" AriaLabel="Удалить задание" Color="FlareColor.Error" Disabled="Busy"
+                             OnClick="@(() => DeleteAsync(Task.Title, () => Api.DeleteTaskAsync(Session.FamilyId, Task.Id)))" />
+        }
+        <FlareStack Row Gap="FlareSpacing.Small">
+            <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+            <FlareButton Loading="Busy" OnClick="SaveAsync">Сохранить</FlareButton>
+        </FlareStack>
     </FlareStack>
 </FlareStack>
 

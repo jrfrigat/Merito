@@ -12,7 +12,7 @@
         <Actions>
             @if (Session.IsParent)
             {
-                <FlareButton Variant="ButtonVariant.Text" OnClick="RenameAsync">Переименовать</FlareButton>
+                <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" OnClick="RenameAsync">Переименовать</FlareButton>
             }
         </Actions>
     </PageHeader>
@@ -23,11 +23,11 @@
             @if (Session.IsParent)
             {
                 <FlareStack Row Wrap Gap="FlareSpacing.Small">
-                    <FlareButton OnClick="AddChildAsync">
+                    <FlareButton Size="ButtonSize.Sm" OnClick="AddChildAsync">
                         <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.PersonAdd" /></LeadingIcon>
                         <ChildContent>Добавить ребенка</ChildContent>
                     </FlareButton>
-                    <FlareButton Variant="ButtonVariant.Tonal" OnClick="InviteAsync">
+                    <FlareButton Variant="ButtonVariant.Tonal" Size="ButtonSize.Sm" OnClick="InviteAsync">
                         <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Key" /></LeadingIcon>
                         <ChildContent>Код приглашения</ChildContent>
                     </FlareButton>
@@ -75,9 +75,9 @@
         <FlareCardActions Wrap>
             @if (Session.IsParent)
             {
-                <FlareButton Variant="ButtonVariant.Text" Href="start">Создать или найти другую семью</FlareButton>
+                <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Href="start">Создать или найти другую семью</FlareButton>
             }
-            <FlareButton Variant="ButtonVariant.Outlined" OnClick="SignOutAsync">
+            <FlareButton Variant="ButtonVariant.Outlined" Size="ButtonSize.Sm" OnClick="SignOutAsync">
                 <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Logout" /></LeadingIcon>
                 <ChildContent>Выйти</ChildContent>
             </FlareButton>

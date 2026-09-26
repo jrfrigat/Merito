@@ -14,7 +14,7 @@
             <FlareTabs @bind-ActiveIndex="_tab">
                 <FlareTab Label="Задания" BadgeColor="FlareColor.Primary" Badge="@_tasks?.Count.ToString()">
                     <FlareStack Gap="FlareSpacing.Small">
-                        <FlareButton Variant="ButtonVariant.Tonal" OnClick="@(() => EditTaskAsync(null))">
+                        <FlareButton Variant="ButtonVariant.Tonal" Size="ButtonSize.Sm" OnClick="@(() => EditTaskAsync(null))">
                             <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Add" /></LeadingIcon>
                             <ChildContent>Новое задание</ChildContent>
                         </FlareButton>
@@ -26,10 +26,6 @@
                                 {
                                     <FlareListItem @key="task.Id" Primary="@task.Title" Secondary="@task.TimeOfDay" OnClick="@(() => EditTaskAsync(task))">
                                         <Leading><FlareChip Label="@Format.Range(task.Points, task.MaxPoints)" Color="FlareColor.Primary" Size="ChipSize.Sm" /></Leading>
-                                        <Trailing>
-                                            <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Delete" AriaLabel="Удалить задание"
-                                                             OnClick="@(() => DeleteAsync(task.Title, () => Api.DeleteTaskAsync(Session.FamilyId, task.Id)))" />
-                                        </Trailing>
                                     </FlareListItem>
                                 }
                             </FlareList>
@@ -39,7 +35,7 @@
 
                 <FlareTab Label="Штрафы" BadgeColor="FlareColor.Primary" Badge="@_penalties.Count.ToString()">
                     <FlareStack Gap="FlareSpacing.Small">
-                        <FlareButton Variant="ButtonVariant.Tonal" OnClick="@(() => EditPenaltyAsync(null))">
+                        <FlareButton Variant="ButtonVariant.Tonal" Size="ButtonSize.Sm" OnClick="@(() => EditPenaltyAsync(null))">
                             <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Add" /></LeadingIcon>
                             <ChildContent>Новый штраф</ChildContent>
                         </FlareButton>
@@ -48,10 +44,6 @@
                             {
                                 <FlareListItem @key="penalty.Id" Primary="@penalty.Title" OnClick="@(() => EditPenaltyAsync(penalty))">
                                     <Leading><FlareChip Label="@($"-{penalty.Points}")" Color="FlareColor.Error" Size="ChipSize.Sm" /></Leading>
-                                    <Trailing>
-                                        <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Delete" AriaLabel="Удалить штраф"
-                                                         OnClick="@(() => DeleteAsync(penalty.Title, () => Api.DeletePenaltyAsync(Session.FamilyId, penalty.Id)))" />
-                                    </Trailing>
                                 </FlareListItem>
                             }
                         </FlareList>
@@ -60,7 +52,7 @@
 
                 <FlareTab Label="Награды" BadgeColor="FlareColor.Primary" Badge="@_rewards.Count.ToString()">
                     <FlareStack Gap="FlareSpacing.Small">
-                        <FlareButton Variant="ButtonVariant.Tonal" OnClick="@(() => EditRewardAsync(null))">
+                        <FlareButton Variant="ButtonVariant.Tonal" Size="ButtonSize.Sm" OnClick="@(() => EditRewardAsync(null))">
                             <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Add" /></LeadingIcon>
                             <ChildContent>Новая награда</ChildContent>
                         </FlareButton>
@@ -69,10 +61,6 @@
                             {
                                 <FlareListItem @key="reward.Id" Primary="@reward.Title" Secondary="@reward.Description" OnClick="@(() => EditRewardAsync(reward))">
                                     <Leading><FlareChip Label="@reward.Cost.ToString()" Color="FlareColor.Tertiary" Size="ChipSize.Sm" /></Leading>
-                                    <Trailing>
-                                        <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Delete" AriaLabel="Удалить награду"
-                                                         OnClick="@(() => DeleteAsync(reward.Title, () => Api.DeleteRewardAsync(Session.FamilyId, reward.Id)))" />
-                                    </Trailing>
                                 </FlareListItem>
                             }
                         </FlareList>
@@ -127,22 +115,7 @@
         var result = await Dialogs.ShowAsync<TDialog>(title, new DialogParameters().Add(parameter, value),
             new DialogOptions { Size = DialogSize.Sm });
         if (result.Cancelled) return;
-        Snackbar.Show("Сохранено", SnackbarSeverity.Success);
+        Snackbar.Show(result.Data as string == DialogBase.Deleted ? "Удалено" : "Сохранено", SnackbarSeverity.Success);
         await LoadAsync();
-    }
-
-    private async Task DeleteAsync(string title, Func<Task> delete)
-    {
-        if (!await Dialogs.AskAsync("Удалить?", $"\"{title}\" пропадет из каталога. История начислений сохранится.", "Удалить", danger: true))
-            return;
-        try
-        {
-            await delete();
-            await LoadAsync();
-        }
-        catch (ApiException e)
-        {
-            Snackbar.Show(e.Message, SnackbarSeverity.Error);
-        }
     }
 }
