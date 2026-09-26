@@ -131,7 +131,7 @@
 
     private async Task RemoveAsync(MemberDto member)
     {
-        if (await Dialogs.ConfirmAsync("Убрать из семьи?", $"{member.DisplayName} больше не увидит семью. История баллов сохранится.", "Убрать", "Отмена") != true)
+        if (!await Dialogs.AskAsync("Убрать из семьи?", $"{member.DisplayName} больше не увидит семью. История баллов сохранится.", "Убрать", danger: true))
             return;
         try
         {

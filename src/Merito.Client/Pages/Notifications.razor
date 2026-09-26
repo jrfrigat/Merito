@@ -200,9 +200,9 @@
     private async Task CancelPurchaseAsync(NotificationDto item)
     {
         if (item.Purchase is not { } purchase ||
-            await Dialogs.ConfirmAsync("Отменить покупку?",
+            !await Dialogs.AskAsync("Отменить покупку?",
                 $"{Format.Points(purchase.Cost)} вернутся на счет {purchase.ChildName}.",
-                "Отменить покупку", "Нет") != true)
+                "Отменить покупку", "Нет", danger: true))
             return;
 
         await RunPurchaseActionAsync(item, true,

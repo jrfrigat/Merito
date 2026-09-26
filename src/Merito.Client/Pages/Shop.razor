@@ -133,7 +133,7 @@
 
     private async Task BuyAsync(RewardDto reward)
     {
-        if (await Dialogs.ConfirmAsync("Купить?", $"\"{reward.Title}\" за {Format.Points(reward.Cost)}. Баллы спишутся сразу.", "Купить", "Отмена") != true)
+        if (!await Dialogs.AskAsync("Купить?", $"\"{reward.Title}\" за {Format.Points(reward.Cost)}. Баллы спишутся сразу.", "Купить"))
             return;
 
         _buying = reward.Id;
@@ -157,7 +157,7 @@
 
     private async Task CancelAsync(PurchaseDto purchase)
     {
-        if (await Dialogs.ConfirmAsync("Отменить покупку?", $"{Format.Points(purchase.Cost)} вернутся на счет.", "Отменить покупку", "Нет") != true)
+        if (!await Dialogs.AskAsync("Отменить покупку?", $"{Format.Points(purchase.Cost)} вернутся на счет.", "Отменить покупку", "Нет", danger: true))
             return;
         await RunAsync(() => Api.CancelPurchaseAsync(Session.FamilyId, purchase.Id), "Покупка отменена, баллы возвращены");
     }

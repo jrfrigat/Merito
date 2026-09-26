@@ -1,0 +1,24 @@
+<FlareStack Gap="FlareSpacing.Medium">
+    <FlareText Typo="TypographyScale.BodyMedium">@Message</FlareText>
+    <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">@CancelText</FlareButton>
+        <FlareButton Color="@(Danger ? FlareColor.Error : FlareColor.Primary)" OnClick="@(() => Dialog.Close())">@ConfirmText</FlareButton>
+    </FlareStack>
+</FlareStack>
+
+@code {
+    /// <summary>The live dialog, cascaded by the dialog provider.</summary>
+    [CascadingParameter] public FlareDialogInstance Dialog { get; set; } = default!;
+
+    /// <summary>What the action will do.</summary>
+    [Parameter, EditorRequired] public string Message { get; set; } = "";
+
+    /// <summary>Label of the confirming button.</summary>
+    [Parameter, EditorRequired] public string ConfirmText { get; set; } = "";
+
+    /// <summary>Label of the cancelling button.</summary>
+    [Parameter] public string CancelText { get; set; } = "Отмена";
+
+    /// <summary>True when the action removes or undoes something.</summary>
+    [Parameter] public bool Danger { get; set; }
+}

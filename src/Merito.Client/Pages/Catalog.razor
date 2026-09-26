@@ -133,7 +133,7 @@
 
     private async Task DeleteAsync(string title, Func<Task> delete)
     {
-        if (await Dialogs.ConfirmAsync("Удалить?", $"\"{title}\" пропадет из каталога. История начислений сохранится.", "Удалить", "Отмена") != true)
+        if (!await Dialogs.AskAsync("Удалить?", $"\"{title}\" пропадет из каталога. История начислений сохранится.", "Удалить", danger: true))
             return;
         try
         {
