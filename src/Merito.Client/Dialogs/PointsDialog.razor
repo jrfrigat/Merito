@@ -55,9 +55,9 @@
 
     private string ActionText => _mode switch
     {
-        PointsMode.Bonus => $"Начислить {Format.Points(_amount)}",
-        PointsMode.Deduct => $"Списать {Format.Points(_amount)}",
-        _ => _penalty is null ? "Оштрафовать" : $"Оштрафовать на {Format.Points(_penalty.Points)}",
+        PointsMode.Bonus => "Начислить",
+        PointsMode.Deduct => "Списать",
+        _ => "Оштрафовать",
     };
 
     protected override void OnInitialized() => _mode = Mode;
