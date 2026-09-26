@@ -6,7 +6,7 @@
         <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@Error</FlareAlert>
     }
     <FlareTextField @bind-Value="_title" Label="Задание" MaxLength="Limits.TitleMaxLength" Required Autofocus />
-    <FlareToggleGroup TValue="TaskCategory" @bind-Value="_category" Mandatory>
+    <FlareToggleGroup TValue="TaskCategory" @bind-Value="_category" Mandatory Size="ButtonSize.Sm">
         <FlareToggleButton Value="TaskCategory.Daily">Ежедневное</FlareToggleButton>
         <FlareToggleButton Value="TaskCategory.Extra">Дополнительное</FlareToggleButton>
     </FlareToggleGroup>

@@ -36,7 +36,7 @@
                 <FlareSwitch @bind-Value="_saveAsTask" Label="Добавить это дело в список заданий" />
                 @if (_saveAsTask)
                 {
-                    <FlareToggleGroup TValue="TaskCategory" @bind-Value="_category" Mandatory>
+                    <FlareToggleGroup TValue="TaskCategory" @bind-Value="_category" Mandatory Size="ButtonSize.Sm">
                         <FlareToggleButton Value="TaskCategory.Daily">Ежедневное</FlareToggleButton>
                         <FlareToggleButton Value="TaskCategory.Extra">Дополнительное</FlareToggleButton>
                     </FlareToggleGroup>
