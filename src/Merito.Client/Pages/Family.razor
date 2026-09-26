@@ -8,7 +8,7 @@
 <PageTitle>Семья - Merito</PageTitle>
 
 <FlareStack Gap="FlareSpacing.Large">
-    <PageHeader Title="@(_family?.Name ?? "Семья")" Subtitle="@(Session.IsParent ? "Участники, аккаунты детей и приглашения" : null)">
+    <PageHeader Title="@(_family?.Name ?? "Семья")">
         <Actions>
             @if (Session.IsParent)
             {

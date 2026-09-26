@@ -13,7 +13,7 @@
             @if (Dashboard.PendingSubmissions > 0)
             {
                 <FlareCard Variant="CardVariant.Tonal" Href="review">
-                    <FlareCardHeader Title="@($"Ждут проверки: {Dashboard.PendingSubmissions}")" Subtitle="Дети отметили сделанные дела">
+                    <FlareCardHeader Title="@($"Ждут проверки: {Dashboard.PendingSubmissions}")">
                         <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.PendingActions" Color="FlareColor.Primary" Size="1.75rem" /></AvatarContent>
                         <ActionContent><FlareIconView Value="@MaterialDesign3Icons.Regular.ChevronRight" /></ActionContent>
                     </FlareCardHeader>
@@ -22,7 +22,7 @@
             @if (Dashboard.PendingPurchases > 0)
             {
                 <FlareCard Variant="CardVariant.Tonal" Href="shop">
-                    <FlareCardHeader Title="@($"Ждут выдачи: {Dashboard.PendingPurchases}")" Subtitle="Покупки в магазине наград">
+                    <FlareCardHeader Title="@($"Ждут выдачи: {Dashboard.PendingPurchases}")">
                         <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.Redeem" Color="FlareColor.Tertiary" Size="1.75rem" /></AvatarContent>
                         <ActionContent><FlareIconView Value="@MaterialDesign3Icons.Regular.ChevronRight" /></ActionContent>
                     </FlareCardHeader>
@@ -46,7 +46,7 @@
             @foreach (var child in Children)
             {
                 <FlareCard @key="child.Id" Variant="CardVariant.Elevated">
-                    <FlareCardHeader Title="@child.DisplayName" Subtitle="@(child.Login is null ? null : $"Логин: {child.Login}")">
+                    <FlareCardHeader Title="@child.DisplayName">
                         <AvatarContent><FlareAvatar Text="@child.DisplayName" /></AvatarContent>
                     </FlareCardHeader>
                     <FlareCardContent>

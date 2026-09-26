@@ -8,7 +8,7 @@
 
 <RoleGate Role="FamilyRole.Parent">
     <FlareStack Gap="FlareSpacing.Large">
-        <PageHeader Title="Проверка" Subtitle="Подтвердите, что дело сделано, и назначьте баллы" />
+        <PageHeader Title="Проверка" />
 
         <LoadState Loading="_items is null" Error="@_error" OnRetry="LoadAsync">
             @if (_items is not null)

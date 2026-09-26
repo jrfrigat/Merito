@@ -8,7 +8,7 @@
 
 <RoleGate Role="FamilyRole.Parent">
     <FlareStack Gap="FlareSpacing.Large">
-        <PageHeader Title="Каталог" Subtitle="Задания, штрафы и награды вашей семьи" />
+        <PageHeader Title="Каталог" />
 
         <LoadState Loading="_tasks is null" Error="@_error" OnRetry="LoadAsync">
             <FlareTabs @bind-ActiveIndex="_tab">

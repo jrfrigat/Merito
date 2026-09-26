@@ -14,8 +14,7 @@
     }
     else
     {
-        <FlareTextField @bind-Value="_title" Label="Что ты сделал?" MaxLength="Limits.TitleMaxLength" Autofocus Required
-                        HelperText="Родитель посмотрит и решит, сколько баллов дать" />
+        <FlareTextField @bind-Value="_title" Label="Что ты сделал?" MaxLength="Limits.TitleMaxLength" Autofocus Required />
     }
     <FlareTextArea @bind-Value="_comment" Label="Комментарий для родителя" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength" />
     <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">

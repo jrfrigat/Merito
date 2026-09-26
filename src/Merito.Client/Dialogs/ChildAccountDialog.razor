@@ -7,19 +7,16 @@
     }
     @if (Child is null)
     {
-        <FlareText Typo="TypographyScale.BodyMedium">
-            Ребенок будет входить по логину и паролю, почта не нужна. Логин - латинские буквы и цифры.
-        </FlareText>
         <FlareTextField @bind-Value="_name" Label="Имя" MaxLength="Limits.NameMaxLength" Required Autofocus />
         <FlareTextField @bind-Value="_login" Label="Логин" MaxLength="Limits.LoginMaxLength" Required Autocomplete="off"
-                        Spellcheck="false" Placeholder="petya" />
+                        Spellcheck="false" Placeholder="petya" HelperText="Латинские буквы и цифры" />
     }
     else
     {
         <FlareText Typo="TypographyScale.BodyMedium">Новый пароль для @Child.DisplayName (логин @Child.Login).</FlareText>
     }
     <FlareTextField @bind-Value="_password" Label="Пароль" Required Autocomplete="new-password"
-                    HelperText="@($"Не короче {Limits.PasswordMinLength} символов. Запишите его для ребенка.")" />
+                    HelperText="@($"Не короче {Limits.PasswordMinLength} символов")" />
     <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
         <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
         <FlareButton Loading="Busy" OnClick="SaveAsync">@(Child is null ? "Добавить" : "Сменить пароль")</FlareButton>
