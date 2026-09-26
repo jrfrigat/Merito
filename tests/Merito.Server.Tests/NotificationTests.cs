@@ -62,6 +62,41 @@ public sealed class NotificationTests
     }
 
     [Fact]
+    public async Task Every_parent_is_told_about_a_new_submission_and_gets_a_push_delivery()
+    {
+        await using var t = await TestDb.CreateAsync();
+        var (parent, child) = await t.AddFamilyAsync(seedExample: true);
+        var secondParentUser = await t.AddUserAsync("SecondParent");
+        t.Db.Members.Add(new FamilyMember
+        {
+            Id = Guid.NewGuid(), FamilyId = parent.FamilyId, UserId = secondParentUser,
+            Role = FamilyRole.Parent, JoinedAt = t.Clock.GetUtcNow().UtcDateTime,
+        });
+        await t.Db.SaveChangesAsync();
+        var secondParent = await t.Access.RequireAsync(parent.FamilyId, secondParentUser);
+        await t.PushSubscriptions.SubscribeAsync(parent, PushRequest);
+        var task = (await t.Catalog.GetTasksAsync(child.FamilyId)).First();
+
+        await t.Submissions.SubmitAsync(child, new(task.Id, null, null));
+        await t.Submissions.SubmitAsync(child, new(null, "Помыл посуду", "Всю"));
+
+        foreach (var recipient in new[] { parent, secondParent })
+        {
+            var items = await t.Notifications.ListAsync(recipient, 50);
+            Assert.Equal(2, items.Count);
+            Assert.All(items, n => Assert.Equal(NotificationKind.SubmissionCreated, n.Kind));
+            Assert.All(items, n => Assert.Contains(child.User.DisplayName, n.Message));
+            Assert.Contains(items, n => n.Message.Contains(task.Title));
+            Assert.Contains(items, n => n.Message.Contains("Помыл посуду") && n.Message.Contains("Всю"));
+        }
+        Assert.Empty(await t.Notifications.ListAsync(child, 50));
+        var parentNotificationIds = (await t.Notifications.ListAsync(parent, 50)).Select(n => n.Id).ToHashSet();
+        var deliveries = await t.Db.WebPushDeliveries.ToListAsync();
+        Assert.Equal(2, deliveries.Count);
+        Assert.All(deliveries, d => Assert.Contains(d.NotificationId, parentNotificationIds));
+    }
+
+    [Fact]
     public async Task Inbox_and_unread_count_are_isolated_by_recipient()
     {
         await using var t = await TestDb.CreateAsync();

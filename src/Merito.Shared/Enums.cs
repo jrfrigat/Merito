@@ -79,4 +79,7 @@ public enum NotificationKind
 
     /// <summary>A parent rejected the child's submission.</summary>
     SubmissionRejected = 3,
+
+    /// <summary>A child reported done work that waits for a parent's review.</summary>
+    SubmissionCreated = 4,
 }

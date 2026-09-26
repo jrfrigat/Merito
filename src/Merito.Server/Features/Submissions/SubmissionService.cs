@@ -65,6 +65,10 @@ public sealed class SubmissionService(MeritoDbContext db, LedgerService ledger, 
             SubmittedAt = clock.GetUtcNow().UtcDateTime,
         };
         db.Submissions.Add(submission);
+        var message = $"{child.User.DisplayName}: {title}.";
+        if (comment is not null) message += $" {comment}";
+        await notifications.AddForParentsAsync(child.FamilyId, NotificationKind.SubmissionCreated, "Новое дело на проверку",
+            message, ct: ct);
         await db.SaveChangesAsync(ct);
 
         return new SubmissionDto(submission.Id, child.Id, child.User.DisplayName, task?.Id, title, comment,

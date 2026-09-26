@@ -102,6 +102,13 @@
                                              OnClick="@(() => FulfillPurchaseAsync(item))">Выдать</FlareButton>
                             </FlareCardActions>
                         }
+                        else if (item.Kind == NotificationKind.SubmissionCreated)
+                        {
+                            <FlareCardActions Align="CardActionsAlign.End">
+                                <FlareButton Variant="ButtonVariant.Tonal" Size="ButtonSize.Sm" Href="review"
+                                             OnClick="@(() => MarkReadAsync(item))">Проверить</FlareButton>
+                            </FlareCardActions>
+                        }
                         else if (unread)
                         {
                             <FlareCardActions Align="CardActionsAlign.End">
@@ -310,6 +317,7 @@
         NotificationKind.PointsDebited => MaterialDesign3Icons.Regular.DoNotDisturbOn,
         NotificationKind.SubmissionApproved => MaterialDesign3Icons.Regular.CheckCircle,
         NotificationKind.SubmissionRejected => MaterialDesign3Icons.Regular.Cancel,
+        NotificationKind.SubmissionCreated => MaterialDesign3Icons.Regular.TaskAlt,
         _ => MaterialDesign3Icons.Regular.Notifications,
     };
 
