@@ -18,7 +18,7 @@
                 <FlareTextField @bind-Value="_login" Immediate Label="Почта или логин" Autocomplete="username" Required
                                 HelperText="Ребенок входит по логину, который задал родитель" />
                 <FlarePasswordField @bind-Value="_password" Immediate Label="Пароль" Autocomplete="current-password" Required />
-                <FlareButton Type="ButtonType.Submit" FullWidth Loading="_busy" Size="ButtonSize.Lg">Войти</FlareButton>
+                <FlareButton Type="ButtonType.Submit" FullWidth Loading="_busy">Войти</FlareButton>
                 <FlareDivider Text="или" />
                 <FlareButton Variant="ButtonVariant.Text" FullWidth Href="register">Зарегистрироваться как родитель</FlareButton>
             </FlareStack>
