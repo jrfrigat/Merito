@@ -137,7 +137,7 @@ public sealed class ShopService(MeritoDbContext db, LedgerService ledger, Notifi
         if (by.Role != FamilyRole.Parent) return;
         var (kind, title, message) = status == PurchaseStatus.Fulfilled
             ? (NotificationKind.PurchaseFulfilled, "Покупка выдана", $"{purchase.Title}.")
-            : (NotificationKind.PurchaseCancelled, "Покупка отменена", $"{purchase.Title}: +{purchase.Cost} баллов вернулись на счет.");
+            : (NotificationKind.PurchaseCancelled, "Покупка отменена", $"{purchase.Title}: +{PointText.Of(purchase.Cost)} возвращено на счет.");
         await notifications.AddAsync(purchase.ChildMember, kind, title, message, ct);
     }
 

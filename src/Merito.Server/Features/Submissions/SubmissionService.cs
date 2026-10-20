@@ -122,7 +122,7 @@ public sealed class SubmissionService(MeritoDbContext db, LedgerService ledger, 
 
         await ledger.PostAsync(submission.ChildMember, points, TransactionKind.Task, submission.Title, comment, parent,
             submissionId: submission.Id, ct: ct);
-        var approvedMessage = $"{submission.Title}: +{points} баллов.";
+        var approvedMessage = $"{submission.Title}: +{PointText.Of(points)}.";
         if (!string.IsNullOrWhiteSpace(comment)) approvedMessage += $" {comment}";
         await notifications.AddAsync(submission.ChildMember, NotificationKind.SubmissionApproved, "Дело засчитано", approvedMessage, ct);
         await db.SaveChangesAsync(ct);

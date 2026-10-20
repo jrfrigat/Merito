@@ -54,14 +54,14 @@ public sealed class LedgerService(MeritoDbContext db, NotificationService notifi
         var signedAmount = amount > 0 ? $"+{amount}" : amount.ToString();
         var reason = string.IsNullOrWhiteSpace(comment) ? $"{title}." : $"{title}. {comment}";
         await notifications.AddForParentsAsync(child.FamilyId, notificationKind, notificationTitle,
-            $"{child.User.DisplayName}: {signedAmount} баллов - {reason}",
+            $"{child.User.DisplayName}: {signedAmount} {PointText.Word(amount)} - {reason}",
             purchaseId: kind == TransactionKind.Purchase ? purchaseId : null, exceptMemberId: author?.Id, ct: ct);
 
         // Task results, purchases and refunds reach the child through their own notifications.
         if (kind is TransactionKind.Bonus or TransactionKind.Deduction or TransactionKind.Penalty)
         {
             var childTitle = kind == TransactionKind.Penalty ? "Штраф" : notificationTitle;
-            await notifications.AddAsync(child, notificationKind, childTitle, $"{signedAmount} баллов - {reason}", ct);
+            await notifications.AddAsync(child, notificationKind, childTitle, $"{signedAmount} {PointText.Word(amount)} - {reason}", ct);
         }
 
         return entry;
