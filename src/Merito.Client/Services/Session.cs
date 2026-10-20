@@ -1,3 +1,4 @@
+using System.Net;
 using Merito.Shared;
 using Merito.Shared.Contracts;
 using Microsoft.JSInterop;
@@ -19,6 +20,9 @@ public sealed class Session(ApiClient api, TokenStore tokens, AuthHandler auth, 
     /// <summary>True once an account is signed in.</summary>
     public bool IsSignedIn => Me is not null;
 
+    /// <summary>Message of a failed initial load, or null; the tokens are kept so a retry can succeed.</summary>
+    public string? LoadError { get; private set; }
+
     /// <summary>True when the caller is a parent in the family on screen.</summary>
     public bool IsParent => Family?.Role == FamilyRole.Parent;
 
@@ -39,9 +43,17 @@ public sealed class Session(ApiClient api, TokenStore tokens, AuthHandler auth, 
         return _loading;
     }
 
+    /// <summary>Retries a failed load after the server becomes reachable again.</summary>
+    public Task RetryAsync()
+    {
+        _loading = ReloadAsync();
+        return _loading;
+    }
+
     /// <summary>Re-reads the account and its families from the server.</summary>
     public async Task ReloadAsync()
     {
+        LoadError = null;
         if (await tokens.GetAsync() is null)
         {
             SetSignedOut();
@@ -52,10 +64,16 @@ public sealed class Session(ApiClient api, TokenStore tokens, AuthHandler auth, 
         {
             Me = await api.GetMeAsync();
         }
-        catch (ApiException e) when (e.Status is System.Net.HttpStatusCode.Unauthorized)
+        catch (ApiException e) when (e.Status is HttpStatusCode.Unauthorized)
         {
             await tokens.ClearAsync();
             SetSignedOut();
+            return;
+        }
+        catch (ApiException e)
+        {
+            LoadError = e.Message;
+            Changed?.Invoke();
             return;
         }
 
@@ -90,6 +108,7 @@ public sealed class Session(ApiClient api, TokenStore tokens, AuthHandler auth, 
 
     private void SetSignedOut()
     {
+        LoadError = null;
         Me = null;
         Family = null;
         Changed?.Invoke();

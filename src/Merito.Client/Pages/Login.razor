@@ -6,36 +6,69 @@
 
 <PageTitle>Вход - Merito</PageTitle>
 
-<FlareCard Variant="CardVariant.Outlined">
-    <FlareCardContent>
-        <form @onsubmit="SignInAsync" @onsubmit:preventDefault>
-            <FlareStack Gap="FlareSpacing.Medium">
-                <FlareText Typo="TypographyScale.TitleLarge" Element="h1">Вход</FlareText>
-                @if (_error is not null)
-                {
-                    <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@_error</FlareAlert>
-                }
-                <FlareTextField @bind-Value="_login" Immediate Label="Почта или логин" Autocomplete="username" Required
-                                HelperText="Ребенок входит по логину, который задал родитель" />
-                <FlarePasswordField @bind-Value="_password" Immediate Label="Пароль" Autocomplete="current-password" Required />
-                <FlareButton Type="ButtonType.Submit" FullWidth Loading="_busy">Войти</FlareButton>
-                <FlareDivider Text="или" />
-                <FlareButton Variant="ButtonVariant.Text" FullWidth Href="register">Зарегистрироваться как родитель</FlareButton>
+<FlareStack Gap="FlareSpacing.Medium">
+    @if (_loadError is not null)
+    {
+        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined" Title="Не получилось загрузить">
+            <FlareStack Gap="FlareSpacing.Small">
+                <FlareText>@_loadError</FlareText>
+                <FlareButton Variant="ButtonVariant.Outlined" Size="ButtonSize.Sm" Loading="_retrying" OnClick="RetryLoadAsync">
+                    Повторить
+                </FlareButton>
             </FlareStack>
-        </form>
-    </FlareCardContent>
-</FlareCard>
+        </FlareAlert>
+    }
+
+    <FlareCard Variant="CardVariant.Outlined">
+        <FlareCardContent>
+            <form @onsubmit="SignInAsync" @onsubmit:preventDefault>
+                <FlareStack Gap="FlareSpacing.Medium">
+                    <FlareText Typo="TypographyScale.TitleLarge" Element="h1">Вход</FlareText>
+                    @if (_error is not null)
+                    {
+                        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@_error</FlareAlert>
+                    }
+                    <FlareTextField @bind-Value="_login" Immediate Label="Почта или логин" Autocomplete="username" Required
+                                    HelperText="Ребенок входит по логину, который задал родитель" />
+                    <FlarePasswordField @bind-Value="_password" Immediate Label="Пароль" Autocomplete="current-password" Required />
+                    <FlareButton Type="ButtonType.Submit" FullWidth Loading="_busy">Войти</FlareButton>
+                    <FlareDivider Text="или" />
+                    <FlareButton Variant="ButtonVariant.Text" FullWidth Href="register">Зарегистрироваться как родитель</FlareButton>
+                </FlareStack>
+            </form>
+        </FlareCardContent>
+    </FlareCard>
+</FlareStack>
 
 @code {
     private string? _login;
     private string? _password;
     private string? _error;
+    private string? _loadError;
     private bool _busy;
+    private bool _retrying;
 
     protected override async Task OnInitializedAsync()
     {
         await Session.EnsureLoadedAsync();
+        _loadError = Session.LoadError;
         if (Session.IsSignedIn) Nav.NavigateTo("");
+    }
+
+    private async Task RetryLoadAsync()
+    {
+        if (_retrying) return;
+        _retrying = true;
+        try
+        {
+            await Session.RetryAsync();
+            _loadError = Session.LoadError;
+            if (Session.IsSignedIn) Nav.NavigateTo("");
+        }
+        finally
+        {
+            _retrying = false;
+        }
     }
 
     private async Task SignInAsync()

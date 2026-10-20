@@ -7,7 +7,21 @@
 @inject ISnackbarService Snackbar
 @inject NotificationCenter NotificationCenter
 
-@if (Session.Family is null)
+@if (Session.LoadError is { } loadError)
+{
+    <FlareStack Align="FlareAlignItems.Center" Justify="FlareJustifyContent.Center" Style="min-height:100dvh;padding:1rem;">
+        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined" Title="Не получилось загрузить">
+            <FlareStack Gap="FlareSpacing.Small">
+                <FlareText>@loadError</FlareText>
+                <FlareStack Row Wrap Gap="FlareSpacing.Small">
+                    <FlareButton Loading="_retrying" OnClick="RetryAsync">Повторить</FlareButton>
+                    <FlareButton Variant="ButtonVariant.Text" OnClick="SignOutFromErrorAsync">Выйти</FlareButton>
+                </FlareStack>
+            </FlareStack>
+        </FlareAlert>
+    </FlareStack>
+}
+else if (Session.Family is null)
 {
     <FlareStack Align="FlareAlignItems.Center" Justify="FlareJustifyContent.Center" Style="min-height:100dvh;">
         <FlareProgressCircular />
@@ -66,6 +80,7 @@ else
 
 @code {
     private bool _isMobile;
+    private bool _retrying;
     private IAsyncDisposable? _breakpoints;
     private readonly Guid _updateToastId = Guid.NewGuid();
 
@@ -89,8 +104,30 @@ else
 
     private void Guard()
     {
+        if (Session.LoadError is not null) return;
         if (!Session.IsSignedIn) Nav.NavigateTo("login");
         else if (Session.Family is null) Nav.NavigateTo("start");
+    }
+
+    private async Task RetryAsync()
+    {
+        if (_retrying) return;
+        _retrying = true;
+        try
+        {
+            await Session.RetryAsync();
+        }
+        finally
+        {
+            _retrying = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SignOutFromErrorAsync()
+    {
+        await Session.SignOutAsync();
+        Nav.NavigateTo("login");
     }
 
     private void OnSessionChanged() => _ = InvokeAsync(async () =>
