@@ -49,6 +49,30 @@
         </FlareStack>
     }
 
+    @if (Session.IsParent && _pendingPurchases is { Count: > 0 })
+    {
+        <FlareStack Gap="FlareSpacing.Small">
+            <FlareText Typo="TypographyScale.TitleMedium" Element="h2">Ждут выдачи</FlareText>
+            @foreach (var purchase in _pendingPurchases)
+            {
+                <FlareCard @key="purchase.Id" Variant="CardVariant.Outlined">
+                    <FlareCardHeader Title="@purchase.Title"
+                                     Subtitle="@($"{purchase.ChildName} - {Format.Points(purchase.Cost)} - {Format.When(purchase.CreatedAt)}")">
+                        <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.Redeem" Color="FlareColor.Tertiary" /></AvatarContent>
+                    </FlareCardHeader>
+                    <FlareCardActions Align="CardActionsAlign.End" Wrap>
+                        <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Color="FlareColor.Error"
+                                     Loading="@(_acting == purchase.Id && _cancelling)" Disabled="@(_acting is not null)"
+                                     OnClick="@(() => CancelPendingAsync(purchase))">Отменить и вернуть</FlareButton>
+                        <FlareButton Variant="ButtonVariant.Filled" Size="ButtonSize.Sm"
+                                     Loading="@(_acting == purchase.Id && !_cancelling)" Disabled="@(_acting is not null)"
+                                     OnClick="@(() => FulfillPendingAsync(purchase))">Выдать</FlareButton>
+                    </FlareCardActions>
+                </FlareCard>
+            }
+        </FlareStack>
+    }
+
     <LoadState Loading="_items is null" Error="@_error" OnRetry="LoadAsync">
         @if (_items is { Count: 0 })
         {
@@ -95,18 +119,7 @@
                                 </FlareStack>
                             </FlareStack>
                         </FlareCardContent>
-                        @if (item.Purchase is { CanFulfill: true } or { CanCancel: true })
-                        {
-                            <FlareCardActions Align="CardActionsAlign.End" Wrap>
-                                <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Color="FlareColor.Error"
-                                             Loading="@(_acting == item.Id && _cancelling)" Disabled="@(_acting is not null || _marking is not null)"
-                                             OnClick="@(() => CancelPurchaseAsync(item))">Отменить и вернуть</FlareButton>
-                                <FlareButton Variant="ButtonVariant.Filled" Size="ButtonSize.Sm"
-                                             Loading="@(_acting == item.Id && !_cancelling)" Disabled="@(_acting is not null || _marking is not null)"
-                                             OnClick="@(() => FulfillPurchaseAsync(item))">Выдать</FlareButton>
-                            </FlareCardActions>
-                        }
-                        else if (unread)
+                        @if (unread)
                         {
                             <FlareCardActions Align="CardActionsAlign.End">
                                 <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm"
@@ -124,6 +137,7 @@
 @code {
     private List<NotificationDto>? _items;
     private List<SubmissionDto>? _pendingSubmissions;
+    private List<PurchaseDto>? _pendingPurchases;
     private string? _error;
     private Guid? _marking;
     private Guid? _acting;
@@ -142,9 +156,13 @@
             var submissionsTask = Session.IsParent
                 ? Api.GetSubmissionsAsync(Session.FamilyId, SubmissionStatus.Pending, take: 100)
                 : Task.FromResult<List<SubmissionDto>>([]);
-            await Task.WhenAll(notificationsTask, submissionsTask);
+            var purchasesTask = Session.IsParent
+                ? Api.GetPurchasesAsync(Session.FamilyId, PurchaseStatus.Pending, take: 100)
+                : Task.FromResult<List<PurchaseDto>>([]);
+            await Task.WhenAll(notificationsTask, submissionsTask, purchasesTask);
             _items = await notificationsTask;
             _pendingSubmissions = await submissionsTask;
+            _pendingPurchases = await purchasesTask;
             await NotificationCenter.RefreshAsync();
         }
         catch (ApiException e)
@@ -196,28 +214,27 @@
         }
     }
 
-    private Task FulfillPurchaseAsync(NotificationDto item) =>
-        RunPurchaseActionAsync(item, false,
-            () => Api.FulfillNotificationPurchaseAsync(Session.FamilyId, item.Id),
+    private Task FulfillPendingAsync(PurchaseDto purchase) =>
+        RunActionAsync(purchase.Id, false,
+            () => Api.FulfillAsync(Session.FamilyId, purchase.Id),
             "Покупка отмечена как выданная");
 
-    private async Task CancelPurchaseAsync(NotificationDto item)
+    private async Task CancelPendingAsync(PurchaseDto purchase)
     {
-        if (item.Purchase is not { } purchase ||
-            !await Dialogs.AskAsync("Отменить покупку?",
+        if (!await Dialogs.AskAsync("Отменить покупку?",
                 $"{Format.Points(purchase.Cost)} вернутся на счет {purchase.ChildName}.",
                 "Отменить покупку", "Нет", danger: true))
             return;
 
-        await RunPurchaseActionAsync(item, true,
-            () => Api.CancelNotificationPurchaseAsync(Session.FamilyId, item.Id),
+        await RunActionAsync(purchase.Id, true,
+            () => Api.CancelPurchaseAsync(Session.FamilyId, purchase.Id),
             "Покупка отменена, баллы возвращены");
     }
 
-    private async Task RunPurchaseActionAsync(NotificationDto item, bool cancelling, Func<Task> action, string done)
+    private async Task RunActionAsync(Guid id, bool cancelling, Func<Task> action, string done)
     {
         if (_acting is not null) return;
-        _acting = item.Id;
+        _acting = id;
         _cancelling = cancelling;
         try
         {
