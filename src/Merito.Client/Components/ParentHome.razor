@@ -51,9 +51,9 @@
                     </FlareCardHeader>
                     <FlareCardContent>
                         <FlareStack Row Align="FlareAlignItems.Baseline" Gap="FlareSpacing.XSmall">
-                            <FlareText Typo="TypographyScale.DisplaySmall" Weight="FontWeight.Bold"
+                            <FlareText Typo="TypographyScale.DisplaySmall" Weight="FontWeight.Bold" Element="span"
                                        Color="@((child.Balance ?? 0) < 0 ? FlareColor.Error : FlareColor.Primary)">@(child.Balance ?? 0)</FlareText>
-                            <FlareText Typo="TypographyScale.TitleSmall">на счету</FlareText>
+                            <FlareText Typo="TypographyScale.TitleSmall" Element="span">на счету</FlareText>
                         </FlareStack>
                     </FlareCardContent>
                     <FlareCardActions FullWidth Wrap="false">

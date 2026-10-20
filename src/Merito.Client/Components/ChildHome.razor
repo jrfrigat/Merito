@@ -5,13 +5,13 @@
     <FlareCard Variant="CardVariant.Filled">
         <FlareCardContent>
             <FlareStack Align="FlareAlignItems.Center" Gap="FlareSpacing.XSmall">
-                <FlareText Typo="TypographyScale.TitleMedium">У тебя на счету</FlareText>
+                <FlareText Typo="TypographyScale.TitleMedium" Element="span">У тебя на счету</FlareText>
                 <FlareStack Row Align="FlareAlignItems.Center" Gap="FlareSpacing.Small">
                     <FlareIconView Value="@MaterialDesign3Icons.Filled.Stars" Color="FlareColor.Primary" Size="3rem" />
-                    <FlareText Typo="TypographyScale.DisplayLarge" Weight="FontWeight.Bold"
+                    <FlareText Typo="TypographyScale.DisplayLarge" Weight="FontWeight.Bold" Element="span"
                                Color="@(Balance < 0 ? FlareColor.Error : FlareColor.Primary)">@Balance</FlareText>
                 </FlareStack>
-                <FlareText Typo="TypographyScale.TitleMedium">@Format.PointsWord(Balance)</FlareText>
+                <FlareText Typo="TypographyScale.TitleMedium" Element="span">@Format.PointsWord(Balance)</FlareText>
             </FlareStack>
         </FlareCardContent>
         <FlareCardActions FullWidth StackBelow="CardActionsStack.Never">

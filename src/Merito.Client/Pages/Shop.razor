@@ -36,7 +36,7 @@
                             <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.Redeem" Color="FlareColor.Tertiary" Size="1.75rem" /></AvatarContent>
                         </FlareCardHeader>
                         <FlareCardActions Align="CardActionsAlign.Between">
-                            <FlareText Typo="TypographyScale.TitleLarge" Weight="FontWeight.Bold">@Format.Points(reward.Cost)</FlareText>
+                            <FlareText Typo="TypographyScale.TitleLarge" Weight="FontWeight.Bold" Element="span">@Format.Points(reward.Cost)</FlareText>
                             <FlareButton Disabled="@(!affordable)" Loading="@(_buying == reward.Id)" OnClick="@(() => BuyAsync(reward))">
                                 @(affordable ? "Купить" : $"Еще {reward.Cost - _balance}")
                             </FlareButton>

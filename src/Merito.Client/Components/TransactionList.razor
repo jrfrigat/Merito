@@ -18,9 +18,9 @@ else
                 </Leading>
                 <Trailing>
                     <FlareStack Align="FlareAlignItems.End" Gap="FlareSpacing.None">
-                        <FlareText Typo="TypographyScale.TitleMedium" Weight="FontWeight.Bold"
+                        <FlareText Typo="TypographyScale.TitleMedium" Weight="FontWeight.Bold" Element="span"
                                    Color="@(item.Amount > 0 ? FlareColor.Success : FlareColor.Error)">@Format.Signed(item.Amount)</FlareText>
-                        <FlareText Typo="TypographyScale.LabelSmall">= @item.BalanceAfter</FlareText>
+                        <FlareText Typo="TypographyScale.LabelSmall" Element="span">= @item.BalanceAfter</FlareText>
                     </FlareStack>
                 </Trailing>
             </FlareListItem>

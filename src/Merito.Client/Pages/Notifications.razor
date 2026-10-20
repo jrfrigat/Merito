@@ -94,7 +94,7 @@
                                 </FlareAvatar>
                                 <FlareStack Gap="FlareSpacing.XSmall" Style="flex:1;min-width:0;">
                                     <FlareStack Row Align="FlareAlignItems.Center" Gap="FlareSpacing.XSmall">
-                                        <FlareText Typo="TypographyScale.TitleMedium" Weight="@(unread ? FontWeight.Bold : FontWeight.Medium)">@item.Title</FlareText>
+                                        <FlareText Typo="TypographyScale.TitleMedium" Element="span" Weight="@(unread ? FontWeight.Bold : FontWeight.Medium)">@item.Title</FlareText>
                                         @if (unread)
                                         {
                                             <span aria-label="Непрочитано" style="width:.55rem;height:.55rem;border-radius:50%;background:var(--flare-color-primary,#6750a4);flex:none;"></span>
@@ -105,7 +105,7 @@
                                     @if (item.Purchase is { } purchase)
                                     {
                                         <FlareStack Gap="FlareSpacing.XSmall">
-                                            <FlareText Typo="TypographyScale.TitleSmall" Weight="FontWeight.Medium">@purchase.Title</FlareText>
+                                            <FlareText Typo="TypographyScale.TitleSmall" Weight="FontWeight.Medium" Element="span">@purchase.Title</FlareText>
                                             <FlareText Typo="TypographyScale.BodySmall">@($"{purchase.ChildName} - {Format.Points(purchase.Cost)}")</FlareText>
                                             <FlareStack Row>
                                                 <FlareChip Label="@PurchaseStatusLabel(purchase.Status)" Color="@PurchaseStatusColor(purchase.Status)" Size="ChipSize.Sm" />
