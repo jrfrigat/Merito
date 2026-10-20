@@ -8,7 +8,7 @@
 
 <FlareCard Variant="CardVariant.Outlined">
     <FlareCardContent>
-        <form @onsubmit="RegisterAsync" @onsubmit:preventDefault>
+        <form @onsubmit="RegisterAsync" @onsubmit:preventDefault novalidate>
             <FlareStack Gap="FlareSpacing.Medium">
                 <FlareText Typo="TypographyScale.TitleLarge" Element="h1">Регистрация родителя</FlareText>
                 <FlareText Typo="TypographyScale.BodyMedium">
@@ -18,10 +18,12 @@
                 {
                     <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@_error</FlareAlert>
                 }
-                <FlareTextField @bind-Value="_name" Immediate Label="Как вас называть" Autocomplete="name" Required MaxLength="Limits.NameMaxLength"
-                                Placeholder="Например, Папа" />
-                <FlareTextField @bind-Value="_email" Immediate Label="Почта" Type="email" Autocomplete="email" Required />
-                <FlarePasswordField @bind-Value="_password" Immediate Label="Пароль" Autocomplete="new-password" Required ShowStrength
+                <FlareTextField @ref="_nameField" @bind-Value="_name" Immediate Label="Как вас называть" Autocomplete="name" Required MaxLength="Limits.NameMaxLength"
+                                ErrorText="@_fieldErrors["name"]" Placeholder="Например, Папа" />
+                <FlareTextField @ref="_emailField" @bind-Value="_email" Immediate Label="Почта" Type="email" Autocomplete="email" Required
+                                ErrorText="@_fieldErrors["email"]" />
+                <FlarePasswordField @ref="_passwordField" @bind-Value="_password" Immediate Label="Пароль" Autocomplete="new-password" Required ShowStrength
+                                    ErrorText="@_fieldErrors["password"]"
                                     HelperText="@($"Не короче {Limits.PasswordMinLength} символов")" />
                 <FlareButton Type="ButtonType.Submit" FullWidth Loading="_busy">Создать аккаунт</FlareButton>
                 <FlareButton Variant="ButtonVariant.Text" FullWidth Href="login">У меня уже есть аккаунт</FlareButton>
@@ -36,12 +38,22 @@
     private string? _password;
     private string? _error;
     private bool _busy;
+    private readonly FieldErrors _fieldErrors = new();
+    private FlareEditableFieldBase? _nameField;
+    private FlareEditableFieldBase? _emailField;
+    private FlareEditableFieldBase? _passwordField;
 
     private async Task RegisterAsync()
     {
-        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_email) || string.IsNullOrEmpty(_password))
+        _fieldErrors.Clear();
+        if (string.IsNullOrWhiteSpace(_name)) _fieldErrors["name"] = "Введите имя.";
+        if (string.IsNullOrWhiteSpace(_email)) _fieldErrors["email"] = "Введите почту.";
+        if (string.IsNullOrEmpty(_password)) _fieldErrors["password"] = "Введите пароль.";
+        else if (_password.Length < Limits.PasswordMinLength)
+            _fieldErrors["password"] = $"Пароль должен быть не короче {Limits.PasswordMinLength} символов.";
+        if (_fieldErrors.HasErrors)
         {
-            _error = "Заполните все поля.";
+            await _fieldErrors.FocusFirstAsync(("name", _nameField), ("email", _emailField), ("password", _passwordField));
             return;
         }
 
@@ -49,16 +61,44 @@
         _error = null;
         try
         {
-            await Session.SignInAsync(await Api.RegisterAsync(new RegisterRequest(_name.Trim(), _email.Trim(), _password)));
+            var name = _name?.Trim() ?? "";
+            var email = _email?.Trim() ?? "";
+            var password = _password ?? "";
+            await Session.SignInAsync(await Api.RegisterAsync(new RegisterRequest(name, email, password)));
             Nav.NavigateTo("start");
         }
         catch (ApiException e)
         {
-            _error = e.Message;
+            await ShowServerErrorAsync(e.Message);
         }
         finally
         {
             _busy = false;
+        }
+    }
+
+    private async Task ShowServerErrorAsync(string message)
+    {
+        if (message.Contains("почт", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("логин", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("Аккаунт", StringComparison.OrdinalIgnoreCase))
+        {
+            _fieldErrors["email"] = message;
+            await _fieldErrors.FocusFirstAsync(("email", _emailField));
+        }
+        else if (message.Contains("Пароль", StringComparison.OrdinalIgnoreCase))
+        {
+            _fieldErrors["password"] = message;
+            await _fieldErrors.FocusFirstAsync(("password", _passwordField));
+        }
+        else if (message.Contains("Имя", StringComparison.OrdinalIgnoreCase))
+        {
+            _fieldErrors["name"] = message;
+            await _fieldErrors.FocusFirstAsync(("name", _nameField));
+        }
+        else
+        {
+            _error = message;
         }
     }
 }

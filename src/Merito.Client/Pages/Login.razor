@@ -21,16 +21,18 @@
 
     <FlareCard Variant="CardVariant.Outlined">
         <FlareCardContent>
-            <form @onsubmit="SignInAsync" @onsubmit:preventDefault>
+            <form @onsubmit="SignInAsync" @onsubmit:preventDefault novalidate>
                 <FlareStack Gap="FlareSpacing.Medium">
                     <FlareText Typo="TypographyScale.TitleLarge" Element="h1">Вход</FlareText>
                     @if (_error is not null)
                     {
                         <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@_error</FlareAlert>
                     }
-                    <FlareTextField @bind-Value="_login" Immediate Label="Почта или логин" Autocomplete="username" Required
+                    <FlareTextField @ref="_loginField" @bind-Value="_login" Immediate Label="Почта или логин" Autocomplete="username" Required
+                                    ErrorText="@_fieldErrors["login"]"
                                     HelperText="Ребенок входит по логину, который задал родитель" />
-                    <FlarePasswordField @bind-Value="_password" Immediate Label="Пароль" Autocomplete="current-password" Required />
+                    <FlarePasswordField @ref="_passwordField" @bind-Value="_password" Immediate Label="Пароль" Autocomplete="current-password" Required
+                                        ErrorText="@_fieldErrors["password"]" />
                     <FlareButton Type="ButtonType.Submit" FullWidth Loading="_busy">Войти</FlareButton>
                     <FlareDivider Text="или" />
                     <FlareButton Variant="ButtonVariant.Text" FullWidth Href="register">Зарегистрироваться как родитель</FlareButton>
@@ -47,6 +49,9 @@
     private string? _loadError;
     private bool _busy;
     private bool _retrying;
+    private readonly FieldErrors _fieldErrors = new();
+    private FlareEditableFieldBase? _loginField;
+    private FlareEditableFieldBase? _passwordField;
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,9 +78,12 @@
 
     private async Task SignInAsync()
     {
-        if (string.IsNullOrWhiteSpace(_login) || string.IsNullOrEmpty(_password))
+        _fieldErrors.Clear();
+        if (string.IsNullOrWhiteSpace(_login)) _fieldErrors["login"] = "Введите логин.";
+        if (string.IsNullOrEmpty(_password)) _fieldErrors["password"] = "Введите пароль.";
+        if (_fieldErrors.HasErrors)
         {
-            _error = "Введите логин и пароль.";
+            await _fieldErrors.FocusFirstAsync(("login", _loginField), ("password", _passwordField));
             return;
         }
 
@@ -83,7 +91,9 @@
         _error = null;
         try
         {
-            await Session.SignInAsync(await Api.LoginAsync(new LoginRequest(_login.Trim(), _password)));
+            var login = _login?.Trim() ?? "";
+            var password = _password ?? "";
+            await Session.SignInAsync(await Api.LoginAsync(new LoginRequest(login, password)));
             Nav.NavigateTo(Session.Family is null ? "start" : "");
         }
         catch (ApiException e)

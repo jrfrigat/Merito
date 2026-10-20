@@ -13,9 +13,9 @@
             @(me.Families.Count == 0 ? $"{me.DisplayName}, начнем с семьи" : "Еще одна семья")
         </FlareText>
 
-        @if (_error is not null)
+        @if (_createError is not null)
         {
-            <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@_error</FlareAlert>
+            <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@_createError</FlareAlert>
         }
 
         <FlareCard Variant="CardVariant.Outlined">
@@ -24,7 +24,8 @@
             </FlareCardHeader>
             <FlareCardContent>
                 <FlareStack Gap="FlareSpacing.Medium">
-                    <FlareTextField @bind-Value="_familyName" Label="Название семьи" Placeholder="Например, Ивановы" MaxLength="Limits.NameMaxLength" />
+                    <FlareTextField @ref="_familyNameField" @bind-Value="_familyName" Label="Название семьи" Placeholder="Например, Ивановы"
+                                    MaxLength="Limits.NameMaxLength" ErrorText="@_createFieldErrors["name"]" />
                     <FlareSwitch @bind-Value="_seedExample" Label="Заполнить примером: 21 задание, 7 штрафов и магазин экранного времени" />
                     <FlareButton FullWidth Loading="_creating" OnClick="CreateAsync">Создать</FlareButton>
                 </FlareStack>
@@ -37,7 +38,12 @@
             </FlareCardHeader>
             <FlareCardContent>
                 <FlareStack Gap="FlareSpacing.Medium">
-                    <FlareTextField @bind-Value="_code" Label="Код приглашения" Placeholder="ABCD2345" Autocomplete="off" />
+                    @if (_joinError is not null)
+                    {
+                        <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@_joinError</FlareAlert>
+                    }
+                    <FlareTextField @ref="_codeField" @bind-Value="_code" Label="Код приглашения" Placeholder="ABCD2345" Autocomplete="off"
+                                    ErrorText="@_joinFieldErrors["code"]" />
                     <FlareButton FullWidth Variant="ButtonVariant.Tonal" Loading="_joining" OnClick="JoinAsync">Вступить</FlareButton>
                 </FlareStack>
             </FlareCardContent>
@@ -57,9 +63,14 @@
     private string? _familyName;
     private bool _seedExample = true;
     private string? _code;
-    private string? _error;
+    private string? _createError;
+    private string? _joinError;
     private bool _creating;
     private bool _joining;
+    private readonly FieldErrors _createFieldErrors = new();
+    private readonly FieldErrors _joinFieldErrors = new();
+    private FlareEditableFieldBase? _familyNameField;
+    private FlareEditableFieldBase? _codeField;
 
     protected override async Task OnInitializedAsync()
     {
@@ -67,29 +78,75 @@
         if (!Session.IsSignedIn) Nav.NavigateTo("login");
     }
 
-    private Task CreateAsync() => RunAsync(v => _creating = v, async () =>
-        await Api.CreateFamilyAsync(new CreateFamilyRequest(_familyName ?? "", _seedExample)));
-
-    private Task JoinAsync() => RunAsync(v => _joining = v, async () =>
-        await Api.JoinFamilyAsync(new JoinFamilyRequest(_code ?? "")));
-
-    private async Task RunAsync(Action<bool> busy, Func<Task<MembershipDto>> action)
+    private async Task CreateAsync()
     {
-        busy(true);
-        _error = null;
+        _createFieldErrors.Clear();
+        if (string.IsNullOrWhiteSpace(_familyName))
+        {
+            _createFieldErrors["name"] = "Введите название семьи.";
+            await _createFieldErrors.FocusFirstAsync(("name", _familyNameField));
+            return;
+        }
+
+        _creating = true;
+        _createError = null;
         try
         {
-            var membership = await action();
+            var membership = await Api.CreateFamilyAsync(new CreateFamilyRequest(_familyName, _seedExample));
             await Session.SelectFamilyAsync(membership.FamilyId);
             Nav.NavigateTo("");
         }
         catch (ApiException e)
         {
-            _error = e.Message;
+            if (e.Message.Contains("Название", StringComparison.OrdinalIgnoreCase))
+            {
+                _createFieldErrors["name"] = e.Message;
+                await _createFieldErrors.FocusFirstAsync(("name", _familyNameField));
+            }
+            else
+            {
+                _createError = e.Message;
+            }
         }
         finally
         {
-            busy(false);
+            _creating = false;
+        }
+    }
+
+    private async Task JoinAsync()
+    {
+        _joinFieldErrors.Clear();
+        if (string.IsNullOrWhiteSpace(_code))
+        {
+            _joinFieldErrors["code"] = "Введите код приглашения.";
+            await _joinFieldErrors.FocusFirstAsync(("code", _codeField));
+            return;
+        }
+
+        _joining = true;
+        _joinError = null;
+        try
+        {
+            var membership = await Api.JoinFamilyAsync(new JoinFamilyRequest(_code));
+            await Session.SelectFamilyAsync(membership.FamilyId);
+            Nav.NavigateTo("");
+        }
+        catch (ApiException e)
+        {
+            if (e.Message.Contains("Код", StringComparison.OrdinalIgnoreCase))
+            {
+                _joinFieldErrors["code"] = e.Message;
+                await _joinFieldErrors.FocusFirstAsync(("code", _codeField));
+            }
+            else
+            {
+                _joinError = e.Message;
+            }
+        }
+        finally
+        {
+            _joining = false;
         }
     }
 
