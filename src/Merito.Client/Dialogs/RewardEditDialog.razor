@@ -5,8 +5,10 @@
     {
         <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@Error</FlareAlert>
     }
-    <FlareTextField @bind-Value="_title" Label="Награда" MaxLength="Limits.TitleMaxLength" Required Autofocus />
-    <FlareNumericField TValue="int" @bind-Value="_cost" Label="Цена в баллах" Min="1" Max="Limits.PointsMax" SelectAllOnFocus />
+    <FlareTextField @ref="_titleField" @bind-Value="_title" Label="Награда" MaxLength="Limits.TitleMaxLength" Required Autofocus
+                    ErrorText="@_fieldErrors["title"]" />
+    <FlareNumericField TValue="int" @ref="_costField" @bind-Value="_cost" Label="Цена в баллах" Min="1" Max="Limits.PointsMax" SelectAllOnFocus
+                       ErrorText="@_fieldErrors["cost"]" />
     <FlareTextArea @bind-Value="_description" Label="Описание и условия" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength" />
     <FlareStack Row Align="FlareAlignItems.Center" Justify="@(Reward is null ? FlareJustifyContent.End : FlareJustifyContent.SpaceBetween)" Gap="FlareSpacing.Small">
         @if (Reward is not null)
@@ -28,16 +30,28 @@
     private string? _title;
     private string? _description;
     private int _cost = 10;
+    private readonly FieldErrors _fieldErrors = new();
+    private FlareEditableFieldBase? _titleField;
+    private FlareEditableFieldBase? _costField;
 
     protected override void OnInitialized()
     {
         if (Reward is not null) (_title, _description, _cost) = (Reward.Title, Reward.Description, Reward.Cost);
     }
 
-    private Task SaveAsync()
+    private async Task SaveAsync()
     {
+        _fieldErrors.Clear();
+        if (string.IsNullOrWhiteSpace(_title)) _fieldErrors["title"] = "Заполните поле \"Награда\".";
+        if (_cost is < 1 or > Limits.PointsMax) _fieldErrors["cost"] = $"Цена от 1 до {Limits.PointsMax}.";
+        if (_fieldErrors.HasErrors)
+        {
+            await _fieldErrors.FocusFirstAsync(("title", _titleField), ("cost", _costField));
+            return;
+        }
+
         var request = new RewardRequest(_title ?? "", _description, _cost);
-        return SubmitAsync(() => Reward is null
+        await SubmitAsync(() => Reward is null
             ? Api.AddRewardAsync(Session.FamilyId, request)
             : Api.UpdateRewardAsync(Session.FamilyId, Reward.Id, request));
     }

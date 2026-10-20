@@ -5,8 +5,10 @@
     {
         <FlareAlert Severity="AlertSeverity.Error" Variant="AlertVariant.Outlined">@Error</FlareAlert>
     }
-    <FlareTextField @bind-Value="_title" Label="Нарушение" MaxLength="Limits.TitleMaxLength" Required Autofocus />
-    <FlareNumericField TValue="int" @bind-Value="_points" Label="Сколько баллов списать" Min="1" Max="Limits.PointsMax" SelectAllOnFocus />
+    <FlareTextField @ref="_titleField" @bind-Value="_title" Label="Нарушение" MaxLength="Limits.TitleMaxLength" Required Autofocus
+                    ErrorText="@_fieldErrors["title"]" />
+    <FlareNumericField TValue="int" @ref="_pointsField" @bind-Value="_points" Label="Сколько баллов списать" Min="1" Max="Limits.PointsMax" SelectAllOnFocus
+                       ErrorText="@_fieldErrors["points"]" />
     <FlareStack Row Align="FlareAlignItems.Center" Justify="@(Penalty is null ? FlareJustifyContent.End : FlareJustifyContent.SpaceBetween)" Gap="FlareSpacing.Small">
         @if (Penalty is not null)
         {
@@ -26,16 +28,28 @@
 
     private string? _title;
     private int _points = 5;
+    private readonly FieldErrors _fieldErrors = new();
+    private FlareEditableFieldBase? _titleField;
+    private FlareEditableFieldBase? _pointsField;
 
     protected override void OnInitialized()
     {
         if (Penalty is not null) (_title, _points) = (Penalty.Title, Penalty.Points);
     }
 
-    private Task SaveAsync()
+    private async Task SaveAsync()
     {
+        _fieldErrors.Clear();
+        if (string.IsNullOrWhiteSpace(_title)) _fieldErrors["title"] = "Заполните поле \"Нарушение\".";
+        if (_points is < 1 or > Limits.PointsMax) _fieldErrors["points"] = $"Баллы от 1 до {Limits.PointsMax}.";
+        if (_fieldErrors.HasErrors)
+        {
+            await _fieldErrors.FocusFirstAsync(("title", _titleField), ("points", _pointsField));
+            return;
+        }
+
         var request = new PenaltyRequest(_title ?? "", _points);
-        return SubmitAsync(() => Penalty is null
+        await SubmitAsync(() => Penalty is null
             ? Api.AddPenaltyAsync(Session.FamilyId, request)
             : Api.UpdatePenaltyAsync(Session.FamilyId, Penalty.Id, request));
     }
