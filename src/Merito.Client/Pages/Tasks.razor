@@ -51,7 +51,8 @@
                             <FlareList TItem="object">
                                 @foreach (var task in group)
                                 {
-                                    <FlareListItem @key="task.Id" Primary="@task.Title" Secondary="@task.TimeOfDay" OnClick="@(() => OpenAsync(task))">
+                                    <FlareListItem @key="task.Id" Primary="@task.Title" Secondary="@task.TimeOfDay" OnClick="@(() => OpenAsync(task))"
+                                                   aria-label="@TaskLabel(task)">
                                         <Leading>
                                             <FlareAvatar Color="FlareColor.Primary" Size="AvatarSize.Sm">
                                                 <FallbackContent><FlareText Typo="TypographyScale.LabelLarge" Weight="FontWeight.Bold">@Format.Range(task.Points, task.MaxPoints)</FlareText></FallbackContent>
@@ -93,6 +94,16 @@
         {
             _error = e.Message;
         }
+    }
+
+    private static string TaskLabel(TaskDto task)
+    {
+        var points = task.MaxPoints is { } max
+            ? $"{task.Points}-{max} {Format.PointsWord(max)}"
+            : Format.Points(task.Points);
+        return string.IsNullOrWhiteSpace(task.TimeOfDay)
+            ? $"{task.Title}, {points}"
+            : $"{task.Title}, {points}, {task.TimeOfDay}";
     }
 
     private async Task OpenAsync(TaskDto? task)
