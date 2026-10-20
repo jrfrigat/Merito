@@ -14,7 +14,6 @@ builder.Services.AddFlare(opts =>
 {
     opts.DefaultTheme = new MaterialDesign3ExpressiveTheme();
     opts.DefaultPaletteId = Md3Palettes.VioletId;
-    opts.RegisterAllBuiltInThemes = false;
 });
 
 // The published service worker is registered and updated through Flare's version check.

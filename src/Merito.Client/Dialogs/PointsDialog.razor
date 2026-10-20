@@ -7,7 +7,7 @@
     }
     <FlareText Typo="TypographyScale.BodyMedium">@Child.DisplayName, на счету @Format.Points(Child.Balance ?? 0)</FlareText>
 
-    <FlareToggleGroup TValue="PointsMode" @bind-Value="_mode" Mandatory Size="ButtonSize.Sm">
+    <FlareToggleGroup TValue="PointsMode?" @bind-Value="_mode" Mandatory Size="ButtonSize.Sm">
         <FlareToggleButton Value="PointsMode.Bonus">Начислить</FlareToggleButton>
         <FlareToggleButton Value="PointsMode.Deduct">Списать</FlareToggleButton>
         <FlareToggleButton Value="PointsMode.Penalty">Штраф</FlareToggleButton>
@@ -48,7 +48,7 @@
     /// <summary>The tab the dialog opens on.</summary>
     [Parameter] public PointsMode Mode { get; set; } = PointsMode.Bonus;
 
-    private PointsMode _mode;
+    private PointsMode? _mode;
     private int _amount = 5;
     private PenaltyDto? _penalty;
     private string? _comment;

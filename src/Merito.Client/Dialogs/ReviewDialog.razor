@@ -36,7 +36,7 @@
                 <FlareSwitch @bind-Value="_saveAsTask" Label="Добавить это дело в список заданий" />
                 @if (_saveAsTask)
                 {
-                    <FlareToggleGroup TValue="TaskCategory" @bind-Value="_category" Mandatory Size="ButtonSize.Sm">
+                    <FlareToggleGroup TValue="TaskCategory?" @bind-Value="_category" Mandatory Size="ButtonSize.Sm">
                         <FlareToggleButton Value="TaskCategory.Daily">Ежедневное</FlareToggleButton>
                         <FlareToggleButton Value="TaskCategory.Extra">Дополнительное</FlareToggleButton>
                     </FlareToggleGroup>
@@ -57,7 +57,7 @@
 
     private int _points;
     private bool _saveAsTask = true;
-    private TaskCategory _category = TaskCategory.Extra;
+    private TaskCategory? _category = TaskCategory.Extra;
     private string? _comment;
 
     private string? PointsHint => Submission.SuggestedPoints is { } p
@@ -67,7 +67,7 @@
     protected override void OnParametersSet() => _points = Math.Max(1, Submission.SuggestedPoints ?? 1);
 
     private Task ApproveAsync() => SubmitAsync(() => Api.ApproveAsync(Session.FamilyId, Submission.Id,
-        new ApproveRequest(_points, _comment, Submission.TaskId is null && _saveAsTask ? _category : null)));
+        new ApproveRequest(_points, _comment, Submission.TaskId is null && _saveAsTask ? _category ?? TaskCategory.Extra : null)));
 
     private Task RejectAsync() => SubmitAsync(() => Api.RejectAsync(Session.FamilyId, Submission.Id, new RejectRequest(_comment)));
 }
