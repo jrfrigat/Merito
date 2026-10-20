@@ -23,7 +23,13 @@
     {
         <FlareStack Align="FlareAlignItems.Center" Gap="FlareSpacing.XSmall">
             <FlareText Typo="TypographyScale.LabelLarge">Код для роли "@Format.Role(_invite.Role)"</FlareText>
-            <FlareText Typo="TypographyScale.DisplaySmall" Mono Weight="FontWeight.Bold" Element="p">@_invite.Code</FlareText>
+            <FlareStack Row Align="FlareAlignItems.Center" Gap="FlareSpacing.Small">
+                <FlareText Typo="TypographyScale.DisplaySmall" Mono Weight="FontWeight.Bold" Element="p">@_invite.Code</FlareText>
+                <FlareButton Variant="ButtonVariant.Tonal" Size="ButtonSize.Sm" OnClick="CopyAsync">
+                    <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.ContentCopy" /></LeadingIcon>
+                    <ChildContent>Скопировать</ChildContent>
+                </FlareButton>
+            </FlareStack>
             <FlareText Typo="TypographyScale.BodySmall">Действует до @Format.When(_invite.ExpiresAt)</FlareText>
         </FlareStack>
         <FlareStack Row Justify="FlareJustifyContent.End">
@@ -36,6 +42,23 @@
     private FamilyRole? _role = FamilyRole.Parent;
     private InviteDto? _invite;
     private bool _creating;
+
+    [Inject] private IFlareClipboard Clipboard { get; set; } = default!;
+    [Inject] private ISnackbarService Snackbar { get; set; } = default!;
+
+    private async Task CopyAsync()
+    {
+        if (_invite is null) return;
+        try
+        {
+            await Clipboard.CopyAsync(_invite.Code);
+            Snackbar.Show("Код скопирован", SnackbarSeverity.Success);
+        }
+        catch
+        {
+            Snackbar.Show("Не удалось скопировать код. Выделите его вручную.", SnackbarSeverity.Error);
+        }
+    }
 
     private async Task CreateAsync()
     {
