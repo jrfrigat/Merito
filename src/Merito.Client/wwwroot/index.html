@@ -12,6 +12,16 @@
     <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <meta name="theme-color" content="#6750a4" />
+    <script>
+        // Chrome derives the installed app's system bars from this meta; Flare swaps the mode class on <html>.
+        (() => {
+            const meta = document.querySelector('meta[name="theme-color"]');
+            const sync = () => meta.setAttribute('content',
+                document.documentElement.classList.contains('flare-mode-dark') ? '#141218' : '#6750a4');
+            sync();
+            new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        })();
+    </script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
