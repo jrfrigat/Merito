@@ -9,7 +9,7 @@
 
     @if (Dashboard.PendingSubmissions > 0 || Dashboard.PendingPurchases > 0)
     {
-        <FlareStack Gap="FlareSpacing.Small">
+        <FlareStack Gap="FlareSpacing.Medium">
             @if (Dashboard.PendingSubmissions > 0)
             {
                 <FlareCard Variant="CardVariant.Tonal" Href="review">
@@ -72,13 +72,6 @@
             }
         </FlareGrid>
     }
-
-    <FlareCard Variant="CardVariant.Outlined">
-        <FlareCardHeader Title="Последние события">
-            <ActionContent><FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Href="history">Вся история</FlareButton></ActionContent>
-        </FlareCardHeader>
-        <TransactionList Items="Dashboard.RecentTransactions" ShowChild />
-    </FlareCard>
 </FlareStack>
 
 @code {
