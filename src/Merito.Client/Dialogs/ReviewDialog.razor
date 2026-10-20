@@ -29,7 +29,8 @@
 
         @if (Approve)
         {
-            <FlareNumericField TValue="int" @bind-Value="_points" Label="Баллы" Min="1" Max="Limits.PointsMax" ShowStepper SelectAllOnFocus
+            <FlareNumericField TValue="int" @ref="_pointsField" @bind-Value="_points" Label="Баллы" Min="1" Max="Limits.PointsMax" ShowStepper SelectAllOnFocus
+                               ErrorText="@_fieldErrors["points"]"
                                HelperText="@PointsHint" />
             @if (Submission.TaskId is null)
             {
@@ -59,6 +60,8 @@
     private bool _saveAsTask = true;
     private TaskCategory? _category = TaskCategory.Extra;
     private string? _comment;
+    private readonly FieldErrors _fieldErrors = new();
+    private FlareEditableFieldBase? _pointsField;
 
     private string? PointsHint => Submission.SuggestedPoints is { } p
         ? $"По списку: {Format.Range(p, Submission.MaxPoints)}"
@@ -66,8 +69,19 @@
 
     protected override void OnParametersSet() => _points = Math.Max(1, Submission.SuggestedPoints ?? 1);
 
-    private Task ApproveAsync() => SubmitAsync(() => Api.ApproveAsync(Session.FamilyId, Submission.Id,
-        new ApproveRequest(_points, _comment, Submission.TaskId is null && _saveAsTask ? _category ?? TaskCategory.Extra : null)));
+    private async Task ApproveAsync()
+    {
+        _fieldErrors.Clear();
+        if (_points is < 1 or > Limits.PointsMax)
+        {
+            _fieldErrors["points"] = $"Баллы от 1 до {Limits.PointsMax}.";
+            await _fieldErrors.FocusFirstAsync(("points", _pointsField));
+            return;
+        }
+
+        await SubmitAsync(() => Api.ApproveAsync(Session.FamilyId, Submission.Id,
+            new ApproveRequest(_points, _comment, Submission.TaskId is null && _saveAsTask ? _category ?? TaskCategory.Extra : null)));
+    }
 
     private Task RejectAsync() => SubmitAsync(() => Api.RejectAsync(Session.FamilyId, Submission.Id, new RejectRequest(_comment)));
 }

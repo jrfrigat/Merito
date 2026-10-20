@@ -7,16 +7,19 @@
     }
     @if (Child is null)
     {
-        <FlareTextField @bind-Value="_name" Label="Имя" MaxLength="Limits.NameMaxLength" Required Autofocus />
-        <FlareTextField @bind-Value="_login" Label="Логин" MaxLength="Limits.LoginMaxLength" Required Autocomplete="off"
-                        Spellcheck="false" Placeholder="petya" HelperText="Латинские буквы и цифры" />
+        <FlareTextField @ref="_nameField" @bind-Value="_name" Label="Имя" MaxLength="Limits.NameMaxLength" Required Autofocus
+                        ErrorText="@_fieldErrors["name"]" />
+        <FlareTextField @ref="_loginField" @bind-Value="_login" Label="Логин" MaxLength="Limits.LoginMaxLength" Required Autocomplete="off"
+                        Spellcheck="false" Placeholder="petya" HelperText="Латинские буквы и цифры"
+                        ErrorText="@_fieldErrors["login"]" />
     }
     else
     {
         <FlareText Typo="TypographyScale.BodyMedium">Новый пароль для @Child.DisplayName (логин @Child.Login).</FlareText>
     }
-    <FlareTextField @bind-Value="_password" Label="Пароль" Required Autocomplete="new-password"
-                    HelperText="@($"Не короче {Limits.PasswordMinLength} символов")" />
+    <FlareTextField @ref="_passwordField" @bind-Value="_password" Label="Пароль" Required Autocomplete="new-password"
+                    HelperText="@($"Не короче {Limits.PasswordMinLength} символов")"
+                    ErrorText="@_fieldErrors["password"]" />
     <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
         <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
         <FlareButton Loading="Busy" OnClick="SaveAsync">@(Child is null ? "Добавить" : "Сменить пароль")</FlareButton>
@@ -30,8 +33,30 @@
     private string? _name;
     private string? _login;
     private string? _password;
+    private readonly FieldErrors _fieldErrors = new();
+    private FlareEditableFieldBase? _nameField;
+    private FlareEditableFieldBase? _loginField;
+    private FlareEditableFieldBase? _passwordField;
 
-    private Task SaveAsync() => SubmitAsync(() => Child is null
-        ? Api.CreateChildAsync(Session.FamilyId, new CreateChildRequest(_name ?? "", _login ?? "", _password ?? ""))
-        : Api.ResetPasswordAsync(Session.FamilyId, Child.Id, new ResetPasswordRequest(_password ?? "")));
+    private async Task SaveAsync()
+    {
+        _fieldErrors.Clear();
+        if (Child is null)
+        {
+            if (string.IsNullOrWhiteSpace(_name)) _fieldErrors["name"] = "Введите имя.";
+            if (string.IsNullOrWhiteSpace(_login)) _fieldErrors["login"] = "Введите логин.";
+        }
+        if (string.IsNullOrEmpty(_password)) _fieldErrors["password"] = "Введите пароль.";
+        else if (_password.Length < Limits.PasswordMinLength)
+            _fieldErrors["password"] = $"Пароль должен быть не короче {Limits.PasswordMinLength} символов.";
+        if (_fieldErrors.HasErrors)
+        {
+            await _fieldErrors.FocusFirstAsync(("name", _nameField), ("login", _loginField), ("password", _passwordField));
+            return;
+        }
+
+        await SubmitAsync(() => Child is null
+            ? Api.CreateChildAsync(Session.FamilyId, new CreateChildRequest(_name ?? "", _login ?? "", _password ?? ""))
+            : Api.ResetPasswordAsync(Session.FamilyId, Child.Id, new ResetPasswordRequest(_password ?? "")));
+    }
 }

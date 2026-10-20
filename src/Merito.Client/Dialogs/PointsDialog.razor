@@ -16,7 +16,8 @@
     @if (_mode == PointsMode.Penalty)
     {
         <FlareSelect TValue="PenaltyDto" @bind-Value="_penalty" Items="Penalties" Label="Нарушение" Searchable
-                     ItemLabel="@(p => p is null ? "" : $"{p.Title} (-{p.Points})")" NoResultsText="Ничего не найдено" />
+                     ItemLabel="@(p => p is null ? "" : $"{p.Title} (-{p.Points})")" NoResultsText="Ничего не найдено"
+                     ErrorText="@_fieldErrors["penalty"]" />
         @if (Penalties.Count == 0)
         {
             <FlareText Typo="TypographyScale.BodySmall">Список штрафов пуст - добавьте их в разделе "Каталог".</FlareText>
@@ -24,10 +25,12 @@
     }
     else
     {
-        <FlareNumericField TValue="int" @bind-Value="_amount" Label="Баллы" Min="1" Max="Limits.PointsMax" ShowStepper SelectAllOnFocus />
+        <FlareNumericField TValue="int" @ref="_amountField" @bind-Value="_amount" Label="Баллы" Min="1" Max="Limits.PointsMax" ShowStepper SelectAllOnFocus
+                           ErrorText="@_fieldErrors["amount"]" />
     }
 
-    <FlareTextArea @bind-Value="_comment" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength"
+    <FlareTextArea @ref="_commentField" @bind-Value="_comment" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength"
+                   ErrorText="@_fieldErrors["comment"]"
                    Label="@(_mode == PointsMode.Penalty ? "Комментарий (необязательно)" : "За что (обязательно)")" />
 
     <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
@@ -52,6 +55,9 @@
     private int _amount = 5;
     private PenaltyDto? _penalty;
     private string? _comment;
+    private readonly FieldErrors _fieldErrors = new();
+    private FlareEditableFieldBase? _amountField;
+    private FlareEditableFieldBase? _commentField;
 
     private string ActionText => _mode switch
     {
@@ -62,15 +68,25 @@
 
     protected override void OnInitialized() => _mode = Mode;
 
-    private Task SaveAsync()
+    private async Task SaveAsync()
     {
-        if (_mode == PointsMode.Penalty && _penalty is null)
+        _fieldErrors.Clear();
+        if (_mode == PointsMode.Penalty)
         {
-            Error = "Выберите нарушение.";
-            return System.Threading.Tasks.Task.CompletedTask;
+            if (_penalty is null) _fieldErrors["penalty"] = "Выберите нарушение.";
+        }
+        else
+        {
+            if (_amount is < 1 or > Limits.PointsMax) _fieldErrors["amount"] = $"Баллы от 1 до {Limits.PointsMax}.";
+            if (string.IsNullOrWhiteSpace(_comment)) _fieldErrors["comment"] = "Напишите, за что.";
+        }
+        if (_fieldErrors.HasErrors)
+        {
+            await _fieldErrors.FocusFirstAsync(("amount", _amountField), ("comment", _commentField));
+            return;
         }
 
-        return SubmitAsync(async () =>
+        await SubmitAsync(async () =>
         {
             if (_mode == PointsMode.Penalty)
                 await Api.ApplyPenaltyAsync(Session.FamilyId, new ApplyPenaltyRequest(Child.Id, _penalty!.Id, _comment));

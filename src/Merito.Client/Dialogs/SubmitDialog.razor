@@ -14,7 +14,8 @@
     }
     else
     {
-        <FlareTextField @bind-Value="_title" Label="Что ты сделал?" MaxLength="Limits.TitleMaxLength" Autofocus Required />
+        <FlareTextField @ref="_titleField" @bind-Value="_title" Label="Что ты сделал?" MaxLength="Limits.TitleMaxLength" Autofocus Required
+                        ErrorText="@_fieldErrors["title"]" />
     }
     <FlareTextArea @bind-Value="_comment" Label="Комментарий для родителя" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength" />
     <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
@@ -32,7 +33,20 @@
 
     private string? _title;
     private string? _comment;
+    private readonly FieldErrors _fieldErrors = new();
+    private FlareEditableFieldBase? _titleField;
 
-    private Task SendAsync() => SubmitAsync(() =>
-        Api.SubmitAsync(Session.FamilyId, new SubmitRequest(Task?.Id, Task is null ? _title : null, _comment)));
+    private async Task SendAsync()
+    {
+        _fieldErrors.Clear();
+        if (Task is null && string.IsNullOrWhiteSpace(_title))
+        {
+            _fieldErrors["title"] = "Заполните поле \"Что сделано\".";
+            await _fieldErrors.FocusFirstAsync(("title", _titleField));
+            return;
+        }
+
+        await SubmitAsync(() =>
+            Api.SubmitAsync(Session.FamilyId, new SubmitRequest(Task?.Id, Task is null ? _title : null, _comment)));
+    }
 }
