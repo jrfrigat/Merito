@@ -45,7 +45,7 @@ else
                     </FlareText>
                     <FlareColorModeToggle />
                     <span style="position:relative;display:inline-flex;">
-                        <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Notifications" Href="notifications" AriaLabel="Уведомления" />
+                        <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Notifications" Href="notifications" AriaLabel="@NotificationsLabel" />
                         @if (NotificationCenter.UnreadCount > 0)
                         {
                             <span aria-hidden="true"
@@ -82,6 +82,13 @@ else
     private bool _isMobile;
     private bool _retrying;
     private IAsyncDisposable? _breakpoints;
+
+    private string NotificationsLabel => NotificationCenter.UnreadCount switch
+    {
+        <= 0 => "Уведомления",
+        > 99 => "Уведомления, непрочитанных: 99+",
+        var count => $"Уведомления, непрочитанных: {count}",
+    };
     private readonly Guid _updateToastId = Guid.NewGuid();
 
     protected override async Task OnInitializedAsync()
