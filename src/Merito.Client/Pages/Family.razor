@@ -148,7 +148,7 @@
 
     private async Task RenameAsync()
     {
-        var name = await MessageBox.PromptAsync("Название семьи", "Название", _family?.Name ?? "");
+        var name = await MessageBox.PromptAsync("Название семьи", "Название", _family?.Name ?? "", "Сохранить", "Отмена");
         if (string.IsNullOrWhiteSpace(name)) return;
         try
         {
