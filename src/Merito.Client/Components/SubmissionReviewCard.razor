@@ -1,0 +1,75 @@
+@inject ApiClient Api
+@inject Session Session
+@inject IDialogService Dialogs
+@inject ISnackbarService Snackbar
+
+<FlareCard Variant="CardVariant.Elevated">
+    <FlareCardHeader Title="@Submission.Title" Subtitle="@($"{Submission.ChildName} - {Format.When(Submission.SubmittedAt)}")">
+        <AvatarContent><FlareAvatar Text="@Submission.ChildName" /></AvatarContent>
+        <ActionContent>
+            <FlareChip Label="@(Submission.SuggestedPoints is { } p ? Format.Range(p, Submission.MaxPoints) : "свое дело")"
+                       Color="@(Submission.TaskId is null ? FlareColor.Tertiary : FlareColor.Primary)" Size="ChipSize.Sm" />
+        </ActionContent>
+    </FlareCardHeader>
+    @if (Submission.ChildComment is not null)
+    {
+        <FlareCardContent><FlareText>"@Submission.ChildComment"</FlareText></FlareCardContent>
+    }
+    <FlareCardActions Align="CardActionsAlign.End">
+        <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Color="FlareColor.Error" Disabled="@(_approving is not null)"
+                     OnClick="@(() => ReviewAsync(approve: false))">Отклонить</FlareButton>
+        @if (Submission.SuggestedPoints is { } points)
+        {
+            <FlareIconButton Icon="@MaterialDesign3Icons.Regular.Edit" AriaLabel="Изменить баллы" Size="ButtonSize.Sm" Disabled="@(_approving is not null)"
+                             OnClick="@(() => ReviewAsync(approve: true))" />
+            <FlareButton Color="FlareColor.Success" Size="ButtonSize.Sm" Loading="@(_approving == Submission.Id)" Disabled="@(_approving is not null)"
+                         OnClick="@(() => ApproveNowAsync(points))">Засчитать</FlareButton>
+        }
+        else
+        {
+            <FlareButton Color="FlareColor.Success" Size="ButtonSize.Sm" OnClick="@(() => ReviewAsync(approve: true))">Засчитать</FlareButton>
+        }
+    </FlareCardActions>
+</FlareCard>
+
+@code {
+    /// <summary>The pending report this card reviews.</summary>
+    [Parameter, EditorRequired] public SubmissionDto Submission { get; set; } = default!;
+
+    /// <summary>Called after the report was approved or rejected.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private Guid? _approving;
+
+    private async Task ApproveNowAsync(int points)
+    {
+        if (_approving is not null) return;
+        _approving = Submission.Id;
+        try
+        {
+            await Api.ApproveAsync(Session.FamilyId, Submission.Id, new ApproveRequest(points, null, null));
+            Snackbar.Show($"{Submission.ChildName}: +{Format.Points(points)}", SnackbarSeverity.Success);
+        }
+        catch (ApiException e)
+        {
+            Snackbar.Show(e.Message, SnackbarSeverity.Error);
+        }
+        finally
+        {
+            _approving = null;
+            await OnChanged.InvokeAsync();
+        }
+    }
+
+    private async Task ReviewAsync(bool approve)
+    {
+        var result = await Dialogs.ShowAsync<ReviewDialog>(approve ? "Засчитать" : "Отклонить", new DialogParameters()
+            .Add(nameof(ReviewDialog.Submission), Submission)
+            .Add(nameof(ReviewDialog.Approve), approve), new DialogOptions { Size = DialogSize.Sm });
+        if (result.Cancelled) return;
+
+        Snackbar.Show(approve ? $"{Submission.ChildName}: баллы начислены" : "Отметка отклонена",
+            approve ? SnackbarSeverity.Success : SnackbarSeverity.Normal);
+        await OnChanged.InvokeAsync();
+    }
+}

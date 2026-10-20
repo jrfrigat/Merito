@@ -38,6 +38,17 @@
         </FlareAlert>
     }
 
+    @if (Session.IsParent && _pendingSubmissions is { Count: > 0 })
+    {
+        <FlareStack Gap="FlareSpacing.Small">
+            <FlareText Typo="TypographyScale.TitleMedium" Element="h2">Ждут проверки</FlareText>
+            @foreach (var submission in _pendingSubmissions)
+            {
+                <SubmissionReviewCard @key="submission.Id" Submission="submission" OnChanged="LoadAsync" />
+            }
+        </FlareStack>
+    }
+
     <LoadState Loading="_items is null" Error="@_error" OnRetry="LoadAsync">
         @if (_items is { Count: 0 })
         {
@@ -95,13 +106,6 @@
                                              OnClick="@(() => FulfillPurchaseAsync(item))">Выдать</FlareButton>
                             </FlareCardActions>
                         }
-                        else if (item.Kind == NotificationKind.SubmissionCreated)
-                        {
-                            <FlareCardActions Align="CardActionsAlign.End">
-                                <FlareButton Variant="ButtonVariant.Tonal" Size="ButtonSize.Sm" Href="review"
-                                             OnClick="@(() => MarkReadAsync(item))">Проверить</FlareButton>
-                            </FlareCardActions>
-                        }
                         else if (unread)
                         {
                             <FlareCardActions Align="CardActionsAlign.End">
@@ -119,6 +123,7 @@
 
 @code {
     private List<NotificationDto>? _items;
+    private List<SubmissionDto>? _pendingSubmissions;
     private string? _error;
     private Guid? _marking;
     private Guid? _acting;
@@ -133,7 +138,13 @@
         _error = null;
         try
         {
-            _items = await Api.GetNotificationsAsync(Session.FamilyId, take: 100);
+            var notificationsTask = Api.GetNotificationsAsync(Session.FamilyId, take: 100);
+            var submissionsTask = Session.IsParent
+                ? Api.GetSubmissionsAsync(Session.FamilyId, SubmissionStatus.Pending, take: 100)
+                : Task.FromResult<List<SubmissionDto>>([]);
+            await Task.WhenAll(notificationsTask, submissionsTask);
+            _items = await notificationsTask;
+            _pendingSubmissions = await submissionsTask;
             await NotificationCenter.RefreshAsync();
         }
         catch (ApiException e)
