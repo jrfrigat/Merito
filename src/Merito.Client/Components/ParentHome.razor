@@ -12,7 +12,7 @@
         <FlareStack Gap="FlareSpacing.Medium">
             @if (Dashboard.PendingSubmissions > 0)
             {
-                <FlareCard Variant="CardVariant.Tonal" Href="review">
+                <FlareCard Variant="CardVariant.Tonal" Href="notifications">
                     <FlareCardHeader Title="@($"Ждут проверки: {Dashboard.PendingSubmissions}")">
                         <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.PendingActions" Color="FlareColor.Primary" Size="1.75rem" /></AvatarContent>
                         <ActionContent><FlareIconView Value="@MaterialDesign3Icons.Regular.ChevronRight" /></ActionContent>
@@ -21,7 +21,7 @@
             }
             @if (Dashboard.PendingPurchases > 0)
             {
-                <FlareCard Variant="CardVariant.Tonal" Href="shop">
+                <FlareCard Variant="CardVariant.Tonal" Href="notifications">
                     <FlareCardHeader Title="@($"Ждут выдачи: {Dashboard.PendingPurchases}")">
                         <AvatarContent><FlareIconView Value="@MaterialDesign3Icons.Regular.Redeem" Color="FlareColor.Tertiary" Size="1.75rem" /></AvatarContent>
                         <ActionContent><FlareIconView Value="@MaterialDesign3Icons.Regular.ChevronRight" /></ActionContent>

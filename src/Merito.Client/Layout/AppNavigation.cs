@@ -15,9 +15,8 @@ public static class AppNavigation
     private static readonly NavItem[] Parent =
     [
         new("", "Главная", MaterialDesign3Icons.Regular.Home),
-        new("review", "Проверка", MaterialDesign3Icons.Regular.TaskAlt),
+        new("notifications", "Уведомления", MaterialDesign3Icons.Regular.Notifications),
         new("catalog", "Каталог", MaterialDesign3Icons.Regular.Checklist),
-        new("shop", "Покупки", MaterialDesign3Icons.Regular.Storefront),
         new("history", "История", MaterialDesign3Icons.Regular.History),
     ];
 

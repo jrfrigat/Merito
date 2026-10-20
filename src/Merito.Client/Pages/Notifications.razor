@@ -41,7 +41,10 @@
     @if (Session.IsParent && _pendingSubmissions is { Count: > 0 })
     {
         <FlareStack Gap="FlareSpacing.Small">
-            <FlareText Typo="TypographyScale.TitleMedium" Element="h2">Ждут проверки</FlareText>
+            <FlareStack Row Wrap Align="FlareAlignItems.Center" Justify="FlareJustifyContent.SpaceBetween" Gap="FlareSpacing.Small">
+                <FlareText Typo="TypographyScale.TitleMedium" Element="h2">Ждут проверки</FlareText>
+                <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Href="review">Все проверки</FlareButton>
+            </FlareStack>
             @foreach (var submission in _pendingSubmissions)
             {
                 <SubmissionReviewCard @key="submission.Id" Submission="submission" OnChanged="LoadAsync" />
@@ -52,7 +55,10 @@
     @if (Session.IsParent && _pendingPurchases is { Count: > 0 })
     {
         <FlareStack Gap="FlareSpacing.Small">
-            <FlareText Typo="TypographyScale.TitleMedium" Element="h2">Ждут выдачи</FlareText>
+            <FlareStack Row Wrap Align="FlareAlignItems.Center" Justify="FlareJustifyContent.SpaceBetween" Gap="FlareSpacing.Small">
+                <FlareText Typo="TypographyScale.TitleMedium" Element="h2">Ждут выдачи</FlareText>
+                <FlareButton Variant="ButtonVariant.Text" Size="ButtonSize.Sm" Href="shop">Все покупки</FlareButton>
+            </FlareStack>
             @foreach (var purchase in _pendingPurchases)
             {
                 <FlareCard @key="purchase.Id" Variant="CardVariant.Outlined">
