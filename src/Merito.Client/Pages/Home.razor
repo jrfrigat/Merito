@@ -13,13 +13,14 @@
         }
         else
         {
-            <ChildHome Dashboard="_dashboard" />
+            <ChildHome Dashboard="_dashboard" Pending="_pending" />
         }
     }
 </LoadState>
 
 @code {
     private DashboardDto? _dashboard;
+    private List<SubmissionDto> _pending = [];
     private string? _error;
 
     protected override Task OnInitializedAsync() => LoadAsync();
@@ -27,13 +28,29 @@
     private async Task LoadAsync()
     {
         _error = null;
+        var dashboardTask = Api.GetDashboardAsync(Session.FamilyId);
+        var pendingTask = Session.IsParent
+            ? Task.FromResult<List<SubmissionDto>>([])
+            : Api.GetSubmissionsAsync(Session.FamilyId, SubmissionStatus.Pending, take: 5);
+
         try
         {
-            _dashboard = await Api.GetDashboardAsync(Session.FamilyId);
+            _dashboard = await dashboardTask;
         }
         catch (ApiException e)
         {
             _error = e.Message;
+            try { await pendingTask; } catch (ApiException) { }
+            return;
+        }
+
+        try
+        {
+            _pending = await pendingTask;
+        }
+        catch (ApiException)
+        {
+            _pending = [];
         }
     }
 }
