@@ -38,11 +38,11 @@
                 <FlareList TItem="object">
                     @foreach (var member in _family.Members)
                     {
-                        <FlareListItem @key="member.Id" Primary="@(member.Id == Session.Family!.MemberId ? $"{member.DisplayName} (вы)" : member.DisplayName)"
+                        <FlareListItem @key="member.Id" Primary="@(member.Id == _currentMemberId ? $"{member.DisplayName} (вы)" : member.DisplayName)"
                                        Secondary="@Describe(member)">
                             <Leading><FlareAvatar Text="@member.DisplayName" /></Leading>
                             <Trailing>
-                                @if (Session.IsParent && member.Id != Session.Family!.MemberId)
+                                @if (Session.IsParent && member.Id != _currentMemberId)
                                 {
                                     <FlareStack Row Gap="FlareSpacing.None">
                                         @if (member.Login is not null)
@@ -88,12 +88,14 @@
 @code {
     private FamilyDto? _family;
     private string? _error;
+    private Guid? _currentMemberId;
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
     private async Task LoadAsync()
     {
         _error = null;
+        _currentMemberId = Session.Family?.MemberId;
         try
         {
             _family = await Api.GetFamilyAsync(Session.FamilyId);
