@@ -1,8 +1,8 @@
 <FlareStack Gap="FlareSpacing.Medium">
     <FlareText Typo="TypographyScale.BodyMedium">@Message</FlareText>
     <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
-        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">@CancelText</FlareButton>
-        <FlareButton Color="@(Danger ? FlareColor.Error : FlareColor.Primary)" OnClick="@(() => Dialog.Close())">@ConfirmText</FlareButton>
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.CancelAsync())">@CancelText</FlareButton>
+        <FlareButton Color="@(Danger ? FlareColor.Error : FlareColor.Primary)" OnClick="@(() => Dialog.CloseAsync())">@ConfirmText</FlareButton>
     </FlareStack>
 </FlareStack>
 

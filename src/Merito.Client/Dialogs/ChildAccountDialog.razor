@@ -21,7 +21,7 @@
                     HelperText="@($"Не короче {Limits.PasswordMinLength} символов")"
                     ErrorText="@_fieldErrors["password"]" />
     <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
-        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.CancelAsync())">Отмена</FlareButton>
         <FlareButton Loading="Busy" OnClick="SaveAsync">@(Child is null ? "Добавить" : "Сменить пароль")</FlareButton>
     </FlareStack>
 </FlareStack>

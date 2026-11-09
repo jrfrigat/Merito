@@ -15,7 +15,7 @@
             <FlareToggleButton Value="FamilyRole.Child">Ребенок</FlareToggleButton>
         </FlareToggleGroup>
         <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
-            <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+            <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.CancelAsync())">Отмена</FlareButton>
             <FlareButton Loading="_creating" OnClick="CreateAsync">Получить код</FlareButton>
         </FlareStack>
     }
@@ -33,7 +33,7 @@
             <FlareText Typo="TypographyScale.BodySmall">Действует до @Format.When(_invite.ExpiresAt)</FlareText>
         </FlareStack>
         <FlareStack Row Justify="FlareJustifyContent.End">
-            <FlareButton OnClick="@(() => Dialog.Close())">Готово</FlareButton>
+            <FlareButton OnClick="@(() => Dialog.CloseAsync())">Готово</FlareButton>
         </FlareStack>
     }
 </FlareStack>

@@ -34,7 +34,7 @@
                    Label="@(_mode == PointsMode.Penalty ? "Комментарий (необязательно)" : "За что (обязательно)")" />
 
     <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
-        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.CancelAsync())">Отмена</FlareButton>
         <FlareButton Loading="Busy" Color="@(_mode == PointsMode.Bonus ? FlareColor.Success : FlareColor.Error)" OnClick="SaveAsync">
             @ActionText
         </FlareButton>

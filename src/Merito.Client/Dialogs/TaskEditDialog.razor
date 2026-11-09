@@ -26,7 +26,7 @@
                              OnClick="@(() => DeleteAsync(Task.Title, () => Api.DeleteTaskAsync(Session.FamilyId, Task.Id)))" />
         }
         <FlareStack Row Gap="FlareSpacing.Small">
-            <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+            <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.CancelAsync())">Отмена</FlareButton>
             <FlareButton Loading="Busy" OnClick="SaveAsync">Сохранить</FlareButton>
         </FlareStack>
     </FlareStack>

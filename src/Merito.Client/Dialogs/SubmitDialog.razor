@@ -19,7 +19,7 @@
     }
     <FlareTextArea @bind-Value="_comment" Label="Комментарий для родителя" Rows="2" AutoGrow MaxLength="Limits.TextMaxLength" />
     <FlareStack Row Wrap Gap="FlareSpacing.Small" Justify="FlareJustifyContent.End">
-        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.Cancel())">Отмена</FlareButton>
+        <FlareButton Variant="ButtonVariant.Text" OnClick="@(() => Dialog.CancelAsync())">Отмена</FlareButton>
         <FlareButton Loading="Busy" OnClick="SendAsync">
             <LeadingIcon><FlareIconView Value="@MaterialDesign3Icons.Regular.Send" /></LeadingIcon>
             <ChildContent>Отправить</ChildContent>

@@ -41,7 +41,7 @@ public abstract class DialogBase : ComponentBase
         try
         {
             await delete();
-            Dialog.Close(DialogResult.Ok(Deleted));
+            await Dialog.CloseAsync(DialogResult.Ok(Deleted));
         }
         catch (ApiException e)
         {
@@ -62,7 +62,7 @@ public abstract class DialogBase : ComponentBase
         try
         {
             await action();
-            Dialog.Close();
+            await Dialog.CloseAsync();
         }
         catch (ApiException e)
         {

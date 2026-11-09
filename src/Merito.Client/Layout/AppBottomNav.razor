@@ -1,6 +1,6 @@
 @inject Session Session
 
-<FlareBottomNav Position="BottomNavPosition.Fixed" AriaLabel="Разделы">
+<FlareBottomNav Position="BottomNavPosition.Fixed" LabelMode="BottomNavLabelMode.Wrap" AriaLabel="Разделы">
     @foreach (var item in AppNavigation.For(Session.Family!.Role))
     {
         <FlareBottomNavItem Href="@item.Href" Match="@(item.Href == "" ? NavMatchMode.Exact : NavMatchMode.Prefix)">
